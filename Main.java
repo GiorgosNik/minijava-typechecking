@@ -1,10 +1,10 @@
 import syntaxtree.*;
-import src.*;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+import src.Visitor;
 public class Main {
     public static void main(String[] args) throws Exception {
         if(args.length != 1){

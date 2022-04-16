@@ -1,9 +1,6 @@
 package src;
 import syntaxtree.*;
 import visitor.GJDepthFirst;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 
 public class Visitor extends GJDepthFirst<String, Void>{
     /**
