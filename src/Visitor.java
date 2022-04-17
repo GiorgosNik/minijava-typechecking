@@ -77,6 +77,21 @@ public class Visitor extends GJDepthFirst<String, Void>{
         return null;
     }
 
+
+    /**
+     * f0 -> Type()
+     * f1 -> Identifier()
+     * f2 -> ";"
+     */
+    @Override
+    public String visit(VarDeclaration n, Void argu) throws Exception {
+        String type = n.f0.accept(this, null);
+        String varName = n.f1.accept(this, null);
+        System.out.println(type+" "+varName);
+
+        return null;
+    }
+
     /**
      * f0 -> "public"
      * f1 -> Type()
@@ -94,12 +109,18 @@ public class Visitor extends GJDepthFirst<String, Void>{
      */
     @Override
     public String visit(MethodDeclaration n, Void argu) throws Exception {
+        System.out.println();
         String argumentList = n.f4.present() ? n.f4.accept(this, null) : "";
 
         String myType = n.f1.accept(this, null);
         String myName = n.f2.accept(this, null);
 
         System.out.println(myType + " " + myName + " -- " + argumentList);
+        System.out.println("Method Variables");
+        n.f7.accept(this, null);
+
+        n.f8.accept(this, null);
+
         return null;
     }
 
