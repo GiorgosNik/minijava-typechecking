@@ -10,9 +10,17 @@ public class classMap {
     String Name;
     public Map<String, method> methods;
     public Map<String, variable> fields;
+    classMap parentClass;
 
     public classMap(String name) {
         Name = name;
+        parentClass = null;
+        methods = new HashMap<String, method>();
+        fields = new HashMap<String, variable>();
+    }
+    public classMap(String name, classMap parent) {
+        Name = name;
+        parentClass = parent;
         methods = new HashMap<String, method>();
         fields = new HashMap<String, variable>();
     }
@@ -33,18 +41,23 @@ public class classMap {
     }
     public void print(){
         System.out.println();
-        System.out.println("Class: "+Name);
+        if(parentClass != null){
+            System.out.println("Class: "+Name+" extends: "+parentClass.Name);
+        }else{
+            System.out.println("Class: "+Name);
+        }
         System.out.println("Fields:");
-        
+        System.out.println();
         for (variable value : fields.values()) {
             value.print();
         }
-        System.out.println();
-        System.out.println();
+       
         System.out.println("Methods:");
         System.out.println();
         for (method value : methods.values()) {
             value.print();
         }
+        System.out.println();
+        System.out.println();
     }
 }

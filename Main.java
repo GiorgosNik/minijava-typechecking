@@ -4,7 +4,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import src.Visitor;
+import src.VisitorPhase1;
+import src.VisitorPhase2;
 public class Main {
     public static void main(String[] args) throws Exception {
         if(args.length != 1){
@@ -23,8 +24,12 @@ public class Main {
 
             System.err.println("Program parsed successfully.");
 
-            Visitor eval = new Visitor();
+            VisitorPhase1 eval = new VisitorPhase1();
             root.accept(eval, null);
+
+            VisitorPhase2 checker = new VisitorPhase2();
+            checker.passSymbolTable(eval.classes);
+            root.accept(checker, null);
         }
         catch(ParseException ex){
             System.out.println(ex.getMessage());

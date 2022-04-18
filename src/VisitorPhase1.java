@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class Visitor extends GJDepthFirst<String, Object> {
+public class VisitorPhase1 extends GJDepthFirst<String, Object> {
 
     public Map<String, classMap> classes;
 
@@ -37,10 +37,15 @@ public class Visitor extends GJDepthFirst<String, Object> {
     public String visit(MainClass n, Object argu) throws Exception {
         classes = new HashMap<String, classMap>();
         String classname = n.f1.accept(this, null);
-        System.out.println("Class: " + classname);
-
-        super.visit(n, argu);
-
+        if (classes.containsKey(classname)) {
+            throw new Exception("Class Exists");
+        } else {
+            classes.put(classname, new classMap(classname));
+        }
+        classes.get(classname).addMethod(new method("main","void"));
+        classes.get(classname).methods.get("main").addFormalParam(n.f11.accept(this, null), "String[]");
+        n.f14.accept(this, classes.get(classname).methods.get("main"));
+        classes.get(classname).print();
         return null;
     }
 
@@ -55,7 +60,6 @@ public class Visitor extends GJDepthFirst<String, Object> {
     @Override
     public String visit(ClassDeclaration n, Object argu) throws Exception {
         String classname = n.f1.accept(this, null);
-        //System.out.println("Class: " + classname);
         if (classes.containsKey(classname)) {
             throw new Exception("Class Exists");
         } else {
@@ -80,11 +84,22 @@ public class Visitor extends GJDepthFirst<String, Object> {
     @Override
     public String visit(ClassExtendsDeclaration n, Object argu) throws Exception {
         String classname = n.f1.accept(this, null);
-        //System.out.println("Class: " + classname);
-
-        super.visit(n, argu);
-
-
+        String parent = n.f3.accept(this, null);
+        if (classes.containsKey(classname)) {
+            throw new Exception("Class Exists");
+        } else if(classes.containsKey(parent)){
+            if(classes.get(parent).parentClass != null){
+                classes.put(classname, new classMap(classname, classes.get(parent)));
+            }else{
+                throw new Exception("We only have single inheritance");
+            }
+            
+        }else{
+            throw new Exception("Parent class does not exist");
+        }
+        n.f5.accept(this, (Object) classes.get(classname));
+        n.f6.accept(this, (Object) classes.get(classname));
+        classes.get(classname).print();
         return null;
     }
 
@@ -99,17 +114,10 @@ public class Visitor extends GJDepthFirst<String, Object> {
             String type = n.f0.accept(this, null);
             String varName = n.f1.accept(this, null);
             ((method) argu).addDefinedVar(varName, type);
-            //System.out.println(type + " " + varName);
         } else if (argu.getClass() == classMap.class) {
             String type = n.f0.accept(this, null);
             String varName = n.f1.accept(this, null);
             ((classMap) argu).addField(varName, type);
-            //System.out.println(type + " " + varName);
-        } else {
-            String type = n.f0.accept(this, null);
-            String varName = n.f1.accept(this, null);
-            //System.out.println(type + " " + varName);
-
         }
         return null;
     }
@@ -131,13 +139,10 @@ public class Visitor extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(MethodDeclaration n, Object argu) throws Exception {        
-
         String myType = n.f1.accept(this, null);
         String myName = n.f2.accept(this, null);
         ((classMap) argu).addMethod(new method(myName,myType));
         n.f4.accept(this, ((classMap) argu).methods.get(myName));
-        //System.out.println(myType + " " + myName);
-        //System.out.println("Method Variables");
         n.f7.accept(this, ((classMap) argu).methods.get(myName));
 
         n.f8.accept(this, null);
@@ -146,50 +151,11 @@ public class Visitor extends GJDepthFirst<String, Object> {
     }
 
     /**
-     * f0 -> FormalParameter()
-     * f1 -> FormalParameterTail()
-     */
-    @Override
-    public String visit(FormalParameterList n, Object argu) throws Exception {
-        n.f0.accept(this, argu);
-
-        if (n.f1 != null) {
-            n.f1.accept(this, argu);
-        }
-
-        return null;
-    }
-
-    /**
-     * f0 -> FormalParameter()
-     * f1 -> FormalParameterTail()
-     */
-    public String visit(FormalParameterTerm n, Object argu) throws Exception {
-
-        return n.f1.accept(this, argu);
-    }
-
-    /**
-     * f0 -> ","
-     * f1 -> FormalParameter()
-     */
-    @Override
-    public String visit(FormalParameterTail n, Object argu) throws Exception {
-        String ret = "";
-        for (Node node : n.f0.nodes) {
-            ret += ", " + node.accept(this, argu);
-        }
-
-        return ret;
-    }
-
-    /**
      * f0 -> Type()
      * f1 -> Identifier()
      */
     @Override
     public String visit(FormalParameter n, Object argu) throws Exception {
-        //System.out.println("Parameter");
         if (argu.getClass() == method.class) {
             String type = n.f0.accept(this, null);
             String name = n.f1.accept(this, null);
@@ -202,7 +168,11 @@ public class Visitor extends GJDepthFirst<String, Object> {
     }
 
     @Override
-    public String visit(ArrayType n, Object argu) {
+    public String visit(BooleanArrayType n, Object argu) {
+        return "boolean[]";
+    }
+    @Override
+    public String visit(IntegerArrayType n, Object argu) {
         return "int[]";
     }
 

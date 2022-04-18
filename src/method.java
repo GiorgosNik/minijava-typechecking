@@ -28,21 +28,23 @@ public class method {
     public void addDefinedVar(String name, String type) throws Exception {
         if (definedVars.containsKey(name)) {
             throw new Exception("Variable Exists");
-        } else {
+        } else if(formalParams.containsKey(name)){
+            throw new Exception("Variable Exists");
+        }else{
             definedVars.put(name, new variable(name, type));
         }
     }
 
     public void print() {
         System.out.println("Function: "+Name+" "+Type);
-        System.out.println("Formal Arguments");
+        System.out.println("-----Formal Arguments-----");
         for (variable value : formalParams.values()) {
             value.print();
         }
-        System.out.println();
-        System.out.println("Variables");
+        System.out.println("----Variables-----");
         for (variable value : definedVars.values()) {
             value.print();
         }
+        System.out.println();
     }
 }
