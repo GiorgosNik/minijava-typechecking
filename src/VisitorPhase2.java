@@ -8,11 +8,44 @@ import visitor.GJDepthFirst;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.LinkedHashMap;
 
 public class VisitorPhase2 extends GJDepthFirst<String, Object> {
-    public Map<String, classMap> classes;
+    public LinkedHashMap<String, classMap> classes;
 
-    public void passSymbolTable(Map<String, classMap> givenMap) {
+    public String isVal(String name, method currMethod) throws Exception {
+        String type = null;
+        if((name.equals("int")||name.equals("boolean")||name.equals("int[]")||name.equals("boolean[]"))){
+            return name;
+        }
+        if (currMethod.formalParams.containsKey(name)) {
+            type = currMethod.formalParams.get(name).Type;
+        } else if (currMethod.definedVars.containsKey(name)) {
+            type = currMethod.definedVars.get(name).Type;
+        } else if (currMethod.belongsTo.fields.containsKey(name)) {
+            type = currMethod.belongsTo.fields.get(name).Type;
+        } else if (currMethod.belongsTo.parentClass != null) {
+            if (currMethod.belongsTo.parentClass.fields.containsKey(name)) {
+                type = currMethod.belongsTo.parentClass.fields.get(name).Type;
+            } else {
+                System.out.println(name+" "+currMethod.Name);
+
+                throw new Exception("Exception: Variable does not exist");
+            }
+        } else {
+            System.out.println(name+" "+currMethod.Name);
+            throw new Exception("Exception: Variable does not exist");
+        }
+        return type;
+    }
+
+    public void passSymbolTable(LinkedHashMap<String, classMap> givenMap) {
         classes = givenMap;
     }
 
@@ -76,14 +109,10 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f5 -> "}"
      */
     public String visit(ClassDeclaration n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        return _ret;
+        String name = n.f1.accept(this, argu);
+        classMap thisClass = classes.get(name);
+        n.f4.accept(this, thisClass);
+        return null;
     }
 
     /**
@@ -97,29 +126,10 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f7 -> "}"
      */
     public String visit(ClassExtendsDeclaration n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        n.f7.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> Type()
-     * f1 -> Identifier()
-     * f2 -> ";"
-     */
-    public String visit(VarDeclaration n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        String name = n.f1.accept(this, argu);
+        classMap thisClass = classes.get(name);
+        n.f6.accept(this, thisClass);
+        return null;
     }
 
     /**
@@ -138,50 +148,41 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f12 -> "}"
      */
     public String visit(MethodDeclaration n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        n.f7.accept(this, argu);
-        n.f8.accept(this, argu);
-        n.f9.accept(this, argu);
-        n.f10.accept(this, argu);
-        n.f11.accept(this, argu);
-        n.f12.accept(this, argu);
-        return _ret;
+        classMap thisClass = (classMap) argu;
+        String type = n.f1.accept(this, argu);
+        String name = n.f2.accept(this, argu);
+        System.out.println("TEST");
+        System.out.println(name);
+        System.out.println(thisClass.Name);
+        method thisMethod = thisClass.methods.get(name);
+
+        String returnType = n.f10.accept(this, thisMethod);
+        if (!(returnType.equals("boolean") || returnType.equals("int") || returnType.equals("boolean[]")
+                || returnType.equals("int[]"))) {
+            returnType = isVal(returnType, thisMethod);
+        }
+        System.out.println("Types" + type + " " + returnType);
+        if (!type.equals(returnType)) {
+            System.out.println("Types" + type + " " + returnType);
+            throw new Exception("Exception: Return Type does not match returned value");
+        }
+
+        n.f8.accept(this, thisMethod);
+        return null;
     }
 
     /**
-     * f0 -> FormalParameter()
-     * f1 -> FormalParameterTail()
+     * f0 -> "this"
      */
-    public String visit(FormalParameterList n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> Type()
-     * f1 -> Identifier()
-     */
-    public String visit(FormalParameter n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> ( FormalParameterTerm() )*
-     */
-    public String visit(FormalParameterTail n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
+    public String visit(ThisExpression n, Object argu) throws Exception {
+        System.out.println("ThisExpression");
+        if (argu.getClass() == method.class) {
+            return ((method) argu).belongsTo.Name;
+        } else if (argu.getClass() == classMap.class) {
+            return ((classMap) argu).Name;
+        } else {
+            throw new Exception("Exception: Bad use of 'THIS'");
+        }
     }
 
     /**
@@ -193,30 +194,6 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
         n.f0.accept(this, argu);
         n.f1.accept(this, argu);
         return _ret;
-    }
-
-    /**
-     * f0 -> ArrayType()
-     * | BooleanType()
-     * | IntegerType()
-     * | Identifier()
-     */
-    public String visit(Type n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
-    }
-
-    
-
-    /**
-     * f0 -> Block()
-     * | AssignmentStatement()
-     * | ArrayAssignmentStatement()
-     * | IfStatement()
-     * | WhileStatement()
-     * | PrintStatement()
-     */
-    public String visit(Statement n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
     }
 
     /**
@@ -238,13 +215,18 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f2 -> Expression()
      * f3 -> ";"
      */
+    @Override
     public String visit(AssignmentStatement n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        return _ret;
+        String name = n.f0.accept(this, argu);
+        String type = isVal(name, (method) argu);
+        String exprType = n.f2.accept(this, argu);
+        if(!(exprType.equals("int")||exprType.equals("boolean")||exprType.equals("int[]")||exprType.equals("boolean[]"))){
+            exprType = isVal(exprType,(method)argu);
+        }
+        if (!exprType.equals(type)) {
+            throw new Exception("Exception: Incomatible Assignement");
+        }
+        return null;
     }
 
     /**
@@ -256,16 +238,28 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f5 -> Expression()
      * f6 -> ";"
      */
+    @Override
     public String visit(ArrayAssignmentStatement n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        return _ret;
+        String arrayName = n.f0.accept(this, argu);
+        String arrayType = isVal(arrayName, (method) argu);
+        arrayType = isVal(arrayType,(method)argu);
+        if (!(arrayType.equals("int[]") || arrayType.equals("boolean[]"))) {
+            throw new Exception("Exception: Array Assignement to Non-Array Type");
+        }
+        String indexType = n.f2.accept(this, argu);
+        indexType = isVal(indexType,(method)argu);
+        if (!indexType.equals("int")) {
+            throw new Exception("Exception: Array Assignement with Non-Integer Index");
+        }
+        String exprType = n.f5.accept(this, argu);
+        exprType = isVal(exprType,(method)argu);
+        if (arrayType.equals("int[]") && exprType.equals("int")) {
+            return null;
+        } else if (arrayType.equals("boolean[]") && exprType.equals("boolean")) {
+            return null;
+        } else {
+            throw new Exception("Exception: Assignement of incompatible type to array");
+        }
     }
 
     /**
@@ -277,14 +271,16 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f5 -> "else"
      * f6 -> Statement()
      */
+    @Override
     public String visit(IfStatement n, Object argu) throws Exception {
+        System.out.println("In IF");
         String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
+        String ifCondtion = n.f2.accept(this, argu);
+        ifCondtion = isVal(ifCondtion, (method)argu);
+        if (!ifCondtion.equals("boolean")) {
+            throw new Exception("Exception: If statement has Non-Boolean Condition");
+        }
         n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
         n.f6.accept(this, argu);
         return _ret;
     }
@@ -296,12 +292,14 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f3 -> ")"
      * f4 -> Statement()
      */
+    @Override
     public String visit(WhileStatement n, Object argu) throws Exception {
         String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
+        String loopCondtion = n.f2.accept(this, argu);
+        loopCondtion = isVal(loopCondtion,(method)argu);
+        if (!loopCondtion.equals("boolean")) {
+            throw new Exception("Exception: Loop has Non-Boolean Condition");
+        }
         n.f4.accept(this, argu);
         return _ret;
     }
@@ -313,13 +311,11 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f3 -> ")"
      * f4 -> ";"
      */
+    @Override
     public String visit(PrintStatement n, Object argu) throws Exception {
+        System.out.println("PrintStatement");
         String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
         n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
         return _ret;
     }
 
@@ -334,101 +330,10 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * | MessageSend()
      * | Clause()
      */
+    @Override
     public String visit(Expression n, Object argu) throws Exception {
+        System.out.println("Expression");
         return n.f0.accept(this, argu);
-    }
-
-    /**
-     * f0 -> Clause()
-     * f1 -> "&&"
-     * f2 -> Clause()
-     */
-    public String visit(AndExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> PrimaryExpression()
-     * f1 -> "<"
-     * f2 -> PrimaryExpression()
-     */
-    public String visit(CompareExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> PrimaryExpression()
-     * f1 -> "+"
-     * f2 -> PrimaryExpression()
-     */
-    public String visit(PlusExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> PrimaryExpression()
-     * f1 -> "-"
-     * f2 -> PrimaryExpression()
-     */
-    public String visit(MinusExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> PrimaryExpression()
-     * f1 -> "*"
-     * f2 -> PrimaryExpression()
-     */
-    public String visit(TimesExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> PrimaryExpression()
-     * f1 -> "["
-     * f2 -> PrimaryExpression()
-     * f3 -> "]"
-     */
-    public String visit(ArrayLookup n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> PrimaryExpression()
-     * f1 -> "."
-     * f2 -> "length"
-     */
-    public String visit(ArrayLength n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
     }
 
     /**
@@ -439,52 +344,229 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f4 -> ( ExpressionList() )?
      * f5 -> ")"
      */
+    @Override
     public String visit(MessageSend n, Object argu) throws Exception {
+        System.out.println("MessageSend");
         String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        return _ret;
+        String className = n.f0.accept(this, argu);
+        method toCall;
+        if ((!classes.containsKey(className))&&(!((method)argu).formalParams.containsKey(className) || ((method)argu).definedVars.containsKey(className) )) {
+            System.out.println(className);
+            throw new Exception("Exception: No such class or variable");
+        }
+        if(argu!=null && !classes.containsKey(className)){
+            if(((method)argu).formalParams.containsKey(className)){
+                className = ((method)argu).formalParams.get(className).Type;
+            }else if(((method)argu).definedVars.containsKey(className) ){
+                className = ((method)argu).definedVars.get(className).Type;
+            }
+        }
+        String funcName = n.f2.accept(this, argu);
+        if (classes.get(className).methods.containsKey(funcName)){
+            toCall = classes.get(className).methods.get(funcName);
+        } else if (classes.get(className).parentClass != null) {
+            if (classes.get(className).parentClass.methods.containsKey(funcName)) {
+                toCall = classes.get(className).parentClass.methods.get(funcName);
+            } else {
+                throw new Exception("Exception: No such method");
+            }
+        } else {
+            throw new Exception("Exception: No such method");
+        }
+        int[] iarr = { 0 };
+        boolean[] check = {false};
+        String typeString = "" + n.f4.accept(this, argu);
+        if (typeString.length() == 0 && !toCall.formalParams.isEmpty()) {
+            throw new Exception("Exception: Arguments do not match");
+        }
+        String[] parts = typeString.split(",");
+        if (parts.length > toCall.formalParams.size() && !toCall.formalParams.isEmpty()) {
+            System.out.println(parts.length + " " + toCall.formalParams.size() + " " + funcName);
+            throw new Exception("Exception: Arguments do not match");
+        }
+        int[] ordinal = { 0 };
+        toCall.formalParams.forEach((key, value) -> {
+            try {
+                if (!(toCall.formalParams.get(key).Type.equals(isVal(parts[iarr[0]],toCall)))) {
+                    System.out.println("BUG"+toCall.formalParams.get(key).Type+" "+(isVal(parts[iarr[0]],toCall)));
+                    check[0] = true;
+                }
+                iarr[0]++;
+            } catch (Exception e) {
+                
+            }
+        });
+        if (check[0]){
+
+            throw new Exception("Exception: Arguments do not match");
+        }
+        return toCall.Type;
     }
 
     /**
      * f0 -> Expression()
      * f1 -> ExpressionTail()
      */
+    @Override
     public String visit(ExpressionList n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
+        String typeString = n.f0.accept(this, argu);
+        if (n.f1 != null) {
+            typeString += n.f1.accept(this, argu);
+        }
+        return typeString;
     }
 
     /**
      * f0 -> ( ExpressionTerm() )*
      */
+    @Override
     public String visit(ExpressionTail n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
+        String ret = "";
+        for (Node node : n.f0.nodes) {
+            ret += "," + node.accept(this, argu);
+        }
+        return ret;
     }
 
     /**
      * f0 -> ","
      * f1 -> Expression()
      */
+    @Override
     public String visit(ExpressionTerm n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
+        return n.f1.accept(this, argu);
+    }
+
+    /**
+     * f0 -> Clause()
+     * f1 -> "&&"
+     * f2 -> Clause()
+     */
+    @Override
+    public String visit(AndExpression n, Object argu) throws Exception {
+        System.out.println("AndExpression");
+        String type1 = n.f0.accept(this, argu);
+        String type2 = n.f2.accept(this, argu);
+        if ((type1.equals("boolean") && type2.equals("boolean"))) {
+            throw new Exception("Exception: Multiplication of Non Int Elements");
+        }
+        return "boolean";
+    }
+
+    /**
+     * f0 -> PrimaryExpression()
+     * f1 -> "<"
+     * f2 -> PrimaryExpression()
+     */
+    @Override
+    public String visit(CompareExpression n, Object argu) throws Exception {
+        System.out.println("Compare");
+        String type1 = n.f0.accept(this, argu);
+        String type2 = n.f2.accept(this, argu);
+        if ((type1.equals("int") && type2.equals("int"))) {
+            throw new Exception("Exception: Comparison of Non Int Elements");
+        }
+        return "boolean";
+    }
+
+    /**
+     * f0 -> PrimaryExpression()
+     * f1 -> "+"
+     * f2 -> PrimaryExpression()
+     */
+    @Override
+    public String visit(PlusExpression n, Object argu) throws Exception {
+        System.out.println("PlusExpression");
+        String type1 = n.f0.accept(this, argu);
+        String type2 = n.f2.accept(this, argu);
+        if ((type1.equals("int") && type2.equals("int"))) {
+            throw new Exception("Exception: Multiplication of Non Int Elements");
+        }
+        return "int";
+    }
+
+    /**
+     * f0 -> PrimaryExpression()
+     * f1 -> "-"
+     * f2 -> PrimaryExpression()
+     */
+    @Override
+    public String visit(MinusExpression n, Object argu) throws Exception {
+        System.out.println("MinusExpression");
+        String type1 = n.f0.accept(this, argu);
+        String type2 = n.f2.accept(this, argu);
+        if ((type1.equals("int") && type2.equals("int"))) {
+            throw new Exception("Exception: Multiplication of Non Int Elements");
+        }
+        return "int";
+    }
+
+    /**
+     * f0 -> PrimaryExpression()
+     * f1 -> "["
+     * f2 -> PrimaryExpression()
+     * f3 -> "]"
+     */
+    @Override
+    public String visit(ArrayLookup n, Object argu) throws Exception {
+        System.out.println("ArrayLookup");
+        String arrayName = n.f0.accept(this, argu);
+        String arrayType = isVal(arrayName,(method)argu);
+        if (!(arrayType.equals("int[]") || arrayType.equals("boolean[]"))) {
+            throw new Exception("Exception: Array Lookup in Non-Array Expression");
+        }
+        String indexName = n.f2.accept(this, argu);
+        String indexType = isVal(indexName,(method)argu);
+        if (!indexType.equals("int")) {
+            throw new Exception("Exception: Array Lookup with Non-Integer Index");
+        }
+        if (arrayType.equals("int[]")) {
+            return "int";
+        } else {
+            return "boolean";
+        }
     }
 
     /**
      * f0 -> NotExpression()
      * | PrimaryExpression()
      */
+    @Override
     public String visit(Clause n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
+        System.out.println("Clause");
+        String type = n.f0.accept(this, argu);
+        return type;
+    }
+
+    /**
+     * f0 -> PrimaryExpression()
+     * f1 -> "*"
+     * f2 -> PrimaryExpression()
+     */
+    @Override
+    public String visit(TimesExpression n, Object argu) throws Exception {
+        System.out.println("TimesExpression");
+        String type1 = n.f0.accept(this, argu);
+        String type2 = n.f2.accept(this, argu);
+        if ((type1.equals("int") && type2.equals("int"))) {
+            throw new Exception("Exception: Multiplication of Non Int Elements");
+        }
+        return "int";
+    }
+
+    /**
+     * f0 -> PrimaryExpression()
+     * f1 -> "."
+     * f2 -> "length"
+     */
+    @Override
+    public String visit(ArrayLength n, Object argu) throws Exception {
+        System.out.println("ArrayLength");
+        String type = n.f0.accept(this, argu);
+        if (!(type.equals("boolean[]") || type.equals("int[]"))) {
+            throw new Exception("Exception: Length on Non-Array Object");
+        }
+        return "int";
     }
 
     /**
@@ -497,44 +579,11 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * | AllocationExpression()
      * | BracketExpression()
      */
+    @Override
     public String visit(PrimaryExpression n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
-    }
-
-    /**
-     * f0 -> <INTEGER_LITERAL>
-     */
-    public String visit(IntegerLiteral n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
-    }
-
-    /**
-     * f0 -> "true"
-     */
-    public String visit(TrueLiteral n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
-    }
-
-    /**
-     * f0 -> "false"
-     */
-    public String visit(FalseLiteral n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
-    }
-
-    /**
-     * f0 -> "this"
-     */
-    public String visit(ThisExpression n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
-    }
-
-    /**
-     * f0 -> BooleanArrayAllocationExpression()
-     * | IntegerArrayAllocationExpression()
-     */
-    public String visit(ArrayAllocationExpression n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
+        System.out.println("PrimaryExpr");
+        String type = n.f0.accept(this, argu);
+        return type;
     }
 
     /**
@@ -544,14 +593,14 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f3 -> Expression()
      * f4 -> "]"
      */
+    @Override
     public String visit(BooleanArrayAllocationExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        return _ret;
+        String expressionType = n.f3.accept(this, argu);
+        expressionType = isVal(expressionType,(method)argu);
+        if (!expressionType.equals("int")) {
+            throw new Exception("Exception: Non-Integer expression in array allocation");
+        }
+        return "boolean[]";
     }
 
     /**
@@ -561,14 +610,14 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f3 -> Expression()
      * f4 -> "]"
      */
+    @Override
     public String visit(IntegerArrayAllocationExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        return _ret;
+        String expressionType = n.f3.accept(this, argu);
+        expressionType = isVal(expressionType,(method)argu);
+        if (!expressionType.equals("int")) {
+            throw new Exception("Exception: Non-Integer expression in array allocation");
+        }
+        return "int[]";
     }
 
     /**
@@ -577,24 +626,10 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f2 -> "("
      * f3 -> ")"
      */
+    @Override
     public String visit(AllocationExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> "!"
-     * f1 -> Clause()
-     */
-    public String visit(NotExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
+        String type = n.f1.accept(this, argu);
+        return type;
     }
 
     /**
@@ -602,33 +637,68 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f1 -> Expression()
      * f2 -> ")"
      */
+    @Override
     public String visit(BracketExpression n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        String type = n.f1.accept(this, argu);
+        return type;
+    }
+
+    /**
+     * f0 -> "!"
+     * f1 -> Clause()
+     */
+    @Override
+    public String visit(NotExpression n, Object argu) throws Exception {
+        String type = n.f1.accept(this, argu);
+        if (!type.equals("boolean")) {
+            throw new Exception("Exception: 'Not' on Non-Boolean expresion");
+        }
+        return type;
     }
 
     @Override
     public String visit(BooleanArrayType n, Object argu) {
         return "boolean[]";
     }
+
     @Override
     public String visit(IntegerArrayType n, Object argu) {
         return "int[]";
     }
 
+    @Override
     public String visit(BooleanType n, Object argu) {
         return "boolean";
     }
 
+    @Override
     public String visit(IntegerType n, Object argu) {
         return "int";
     }
 
     @Override
     public String visit(Identifier n, Object argu) {
+        System.out.println("Identifier");
+        System.out.println(n.f0.toString());
         return n.f0.toString();
+    }
+
+    @Override
+    public String visit(IntegerLiteral n, Object argu) throws Exception {
+        System.out.println("IntegerLiteral");
+        System.out.println(n.f0.toString());
+        return "int";
+    }
+
+    @Override
+    public String visit(TrueLiteral n, Object argu) throws Exception {
+        System.out.println("TrueLiteral");
+        return "boolean";
+    }
+
+    @Override
+    public String visit(FalseLiteral n, Object argu) throws Exception {
+        System.out.println("FalseLiteral");
+        return "boolean";
     }
 }

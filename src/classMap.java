@@ -1,6 +1,6 @@
 package src;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import src.method;
@@ -15,14 +15,14 @@ public class classMap {
     public classMap(String name) {
         Name = name;
         parentClass = null;
-        methods = new HashMap<String, method>();
-        fields = new HashMap<String, variable>();
+        methods = new LinkedHashMap<String, method>();
+        fields = new LinkedHashMap<String, variable>();
     }
     public classMap(String name, classMap parent) {
         Name = name;
         parentClass = parent;
-        methods = new HashMap<String, method>();
-        fields = new HashMap<String, variable>();
+        methods = new LinkedHashMap<String, method>();
+        fields = new LinkedHashMap<String, variable>();
     }
 
     public void addField(String name, String type)throws Exception{

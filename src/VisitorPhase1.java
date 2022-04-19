@@ -5,13 +5,13 @@ import src.classMap;
 import src.method;
 import src.variable;
 import visitor.GJDepthFirst;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
 public class VisitorPhase1 extends GJDepthFirst<String, Object> {
 
-    public Map<String, classMap> classes;
+    public LinkedHashMap<String, classMap> classes;
 
     /**
      * f0 -> "class"
@@ -35,14 +35,14 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(MainClass n, Object argu) throws Exception {
-        classes = new HashMap<String, classMap>();
+        classes = new LinkedHashMap<String, classMap>();
         String classname = n.f1.accept(this, null);
         if (classes.containsKey(classname)) {
             throw new Exception("Class Exists");
         } else {
             classes.put(classname, new classMap(classname));
         }
-        classes.get(classname).addMethod(new method("main","void"));
+        classes.get(classname).addMethod(new method("main","void", classes.get(classname)));
         classes.get(classname).methods.get("main").addFormalParam(n.f11.accept(this, null), "String[]");
         n.f14.accept(this, classes.get(classname).methods.get("main"));
         classes.get(classname).print();
@@ -141,7 +141,7 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
     public String visit(MethodDeclaration n, Object argu) throws Exception {        
         String myType = n.f1.accept(this, null);
         String myName = n.f2.accept(this, null);
-        ((classMap) argu).addMethod(new method(myName,myType));
+        ((classMap) argu).addMethod(new method(myName,myType,(classMap) argu));
         n.f4.accept(this, ((classMap) argu).methods.get(myName));
         n.f7.accept(this, ((classMap) argu).methods.get(myName));
 

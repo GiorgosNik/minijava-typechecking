@@ -1,18 +1,20 @@
 package src;
 
 import java.util.Map;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import src.variable;
 
 public class method {
     public String Name;
     public String Type;
-    public Map<String, variable> formalParams;
-    public Map<String, variable> definedVars;
+    public classMap belongsTo;
+    public LinkedHashMap<String, variable> formalParams;
+    public LinkedHashMap<String, variable> definedVars;
 
-    public method(String name, String type) {
-        formalParams = new HashMap<String, variable>();
-        definedVars = new HashMap<String, variable>();
+    public method(String name, String type, classMap scope) {
+        belongsTo = scope;
+        formalParams = new LinkedHashMap<String, variable>();
+        definedVars = new LinkedHashMap<String, variable>();
         Name = name;
         Type = type;
     }
