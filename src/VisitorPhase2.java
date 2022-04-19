@@ -219,8 +219,9 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(AssignmentStatement n, Object argu) throws Exception {
         String name = n.f0.accept(this, argu);
         String type = isVal(name, (method) argu);
+        System.out.println(name+" "+type);
         String exprType = n.f2.accept(this, argu);
-        if(!(exprType.equals("int")||exprType.equals("boolean")||exprType.equals("int[]")||exprType.equals("boolean[]"))){
+        if(!(exprType.equals("int")||exprType.equals("boolean")||exprType.equals("int[]")||exprType.equals("boolean[]"))&& !classes.containsKey(exprType)){
             exprType = isVal(exprType,(method)argu);
         }
         if (!exprType.equals(type)) {
@@ -347,10 +348,9 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(MessageSend n, Object argu) throws Exception {
         System.out.println("MessageSend");
-        String _ret = null;
         String className = n.f0.accept(this, argu);
         method toCall;
-        if ((!classes.containsKey(className))&&(!((method)argu).formalParams.containsKey(className) || ((method)argu).definedVars.containsKey(className) )) {
+        if ((!classes.containsKey(className))&&(!(((method)argu).formalParams.containsKey(className) || ((method)argu).definedVars.containsKey(className) ))) {
             System.out.println(className);
             throw new Exception("Exception: No such class or variable");
         }
@@ -380,11 +380,10 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
             throw new Exception("Exception: Arguments do not match");
         }
         String[] parts = typeString.split(",");
-        if (parts.length > toCall.formalParams.size() && !toCall.formalParams.isEmpty()) {
+        if (parts.length != toCall.formalParams.size() && !toCall.formalParams.isEmpty()) {
             System.out.println(parts.length + " " + toCall.formalParams.size() + " " + funcName);
             throw new Exception("Exception: Arguments do not match");
         }
-        int[] ordinal = { 0 };
         toCall.formalParams.forEach((key, value) -> {
             try {
                 if (!(toCall.formalParams.get(key).Type.equals(isVal(parts[iarr[0]],toCall)))) {
@@ -446,9 +445,11 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(AndExpression n, Object argu) throws Exception {
         System.out.println("AndExpression");
         String type1 = n.f0.accept(this, argu);
+        type1 = isVal(type1, (method)argu);
         String type2 = n.f2.accept(this, argu);
-        if ((type1.equals("boolean") && type2.equals("boolean"))) {
-            throw new Exception("Exception: Multiplication of Non Int Elements");
+        type2 = isVal(type2, (method)argu);
+        if (!(type1.equals("boolean") && type2.equals("boolean"))) {
+            throw new Exception("Exception: And operation on Non-Boolean");
         }
         return "boolean";
     }
@@ -462,8 +463,10 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(CompareExpression n, Object argu) throws Exception {
         System.out.println("Compare");
         String type1 = n.f0.accept(this, argu);
+        type1 = isVal(type1, (method)argu);
         String type2 = n.f2.accept(this, argu);
-        if ((type1.equals("int") && type2.equals("int"))) {
+        type2 = isVal(type2, (method)argu);
+        if (!(type1.equals("int") && type2.equals("int"))) {
             throw new Exception("Exception: Comparison of Non Int Elements");
         }
         return "boolean";
@@ -478,9 +481,11 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(PlusExpression n, Object argu) throws Exception {
         System.out.println("PlusExpression");
         String type1 = n.f0.accept(this, argu);
+        type1 = isVal(type1, (method)argu);
         String type2 = n.f2.accept(this, argu);
-        if ((type1.equals("int") && type2.equals("int"))) {
-            throw new Exception("Exception: Multiplication of Non Int Elements");
+        type2 = isVal(type2, (method)argu);
+        if (!(type1.equals("int") && type2.equals("int"))) {
+            throw new Exception("Exception: Addition of Non Int Elements");
         }
         return "int";
     }
@@ -494,9 +499,11 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(MinusExpression n, Object argu) throws Exception {
         System.out.println("MinusExpression");
         String type1 = n.f0.accept(this, argu);
+        type1 = isVal(type1, (method)argu);
         String type2 = n.f2.accept(this, argu);
-        if ((type1.equals("int") && type2.equals("int"))) {
-            throw new Exception("Exception: Multiplication of Non Int Elements");
+        type2 = isVal(type2, (method)argu);
+        if (!(type1.equals("int") && type2.equals("int"))) {
+            throw new Exception("Exception: Subtraction of Non Int Elements");
         }
         return "int";
     }
@@ -547,8 +554,10 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(TimesExpression n, Object argu) throws Exception {
         System.out.println("TimesExpression");
         String type1 = n.f0.accept(this, argu);
+        type1 = isVal(type1, (method)argu);
         String type2 = n.f2.accept(this, argu);
-        if ((type1.equals("int") && type2.equals("int"))) {
+        type2 = isVal(type2, (method)argu);
+        if (!(type1.equals("int") && type2.equals("int"))) {
             throw new Exception("Exception: Multiplication of Non Int Elements");
         }
         return "int";
@@ -650,6 +659,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(NotExpression n, Object argu) throws Exception {
         String type = n.f1.accept(this, argu);
+        type = isVal(type, (method)argu);
         if (!type.equals("boolean")) {
             throw new Exception("Exception: 'Not' on Non-Boolean expresion");
         }
