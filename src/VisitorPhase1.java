@@ -42,7 +42,7 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
         } else {
             classes.put(classname, new classMap(classname));
         }
-        classes.get(classname).addMethod(new method("main","void", classes.get(classname)));
+        classes.get(classname).addMethod(new method("main", "void", classes.get(classname)));
         classes.get(classname).methods.get("main").addFormalParam(n.f11.accept(this, null), "String[]");
         n.f14.accept(this, classes.get(classname).methods.get("main"));
         classes.get(classname).print();
@@ -87,14 +87,9 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
         String parent = n.f3.accept(this, null);
         if (classes.containsKey(classname)) {
             throw new Exception("Class Exists");
-        } else if(classes.containsKey(parent)){
-            if(classes.get(parent).parentClass == null){
-                classes.put(classname, new classMap(classname, classes.get(parent)));
-            }else{
-                throw new Exception("We only have single inheritance");
-            }
-            
-        }else{
+        } else if (classes.containsKey(parent)) {
+            classes.put(classname, new classMap(classname, classes.get(parent)));
+        } else {
             throw new Exception("Parent class does not exist");
         }
         n.f5.accept(this, (Object) classes.get(classname));
@@ -138,10 +133,10 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
      * f12 -> "}"
      */
     @Override
-    public String visit(MethodDeclaration n, Object argu) throws Exception {        
+    public String visit(MethodDeclaration n, Object argu) throws Exception {
         String myType = n.f1.accept(this, null);
         String myName = n.f2.accept(this, null);
-        ((classMap) argu).addMethod(new method(myName,myType,(classMap) argu));
+        ((classMap) argu).addMethod(new method(myName, myType, (classMap) argu));
         n.f4.accept(this, ((classMap) argu).methods.get(myName));
         n.f7.accept(this, ((classMap) argu).methods.get(myName));
 
@@ -160,10 +155,10 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
             String type = n.f0.accept(this, null);
             String name = n.f1.accept(this, null);
             ((method) argu).addFormalParam(name, type);
-        } else{
+        } else {
             throw new Exception("Bad Argu Type");
         }
-        
+
         return null;
     }
 
@@ -171,6 +166,7 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
     public String visit(BooleanArrayType n, Object argu) {
         return "boolean[]";
     }
+
     @Override
     public String visit(IntegerArrayType n, Object argu) {
         return "int[]";

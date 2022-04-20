@@ -315,9 +315,12 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(PrintStatement n, Object argu) throws Exception {
         System.out.println("PrintStatement");
-        String _ret = null;
-        n.f2.accept(this, argu);
-        return _ret;
+        String type = n.f2.accept(this, argu);
+        type = isVal(type,(method)argu);
+        if(!(type.equals("int")||type.equals("boolean"))){
+            throw new Exception("Exception: Cant print this object");
+        }
+        return null;
     }
 
     /**
