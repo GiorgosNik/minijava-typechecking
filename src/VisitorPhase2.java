@@ -349,16 +349,28 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(MessageSend n, Object argu) throws Exception {
         System.out.println("MessageSend");
         String className = n.f0.accept(this, argu);
+        System.out.println(className);
         method toCall;
         if ((!classes.containsKey(className))&&(!(((method)argu).formalParams.containsKey(className) || ((method)argu).definedVars.containsKey(className) ))) {
-            System.out.println(className);
-            throw new Exception("Exception: No such class or variable");
+            if(!((method)argu).belongsTo.fields.containsKey(className)){
+                if(((method)argu).belongsTo.parentClass != null){
+                    if(!((method)argu).belongsTo.parentClass.fields.containsKey(className)){
+                        throw new Exception("Exception: No such class or variable");
+                    }
+                }else{
+                    throw new Exception("Exception: No such class or variable");
+                }
+            }
         }
         if(argu!=null && !classes.containsKey(className)){
             if(((method)argu).formalParams.containsKey(className)){
                 className = ((method)argu).formalParams.get(className).Type;
             }else if(((method)argu).definedVars.containsKey(className) ){
                 className = ((method)argu).definedVars.get(className).Type;
+            }else if(((method)argu).belongsTo.fields.containsKey(className)){
+                className = ((method)argu).belongsTo.fields.get(className).Type;
+            }else if(((method)argu).belongsTo.parentClass.fields.containsKey(className)){
+                className = ((method)argu).belongsTo.parentClass.fields.get(className).Type;
             }
         }
         String funcName = n.f2.accept(this, argu);

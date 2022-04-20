@@ -88,7 +88,7 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
         if (classes.containsKey(classname)) {
             throw new Exception("Class Exists");
         } else if(classes.containsKey(parent)){
-            if(classes.get(parent).parentClass != null){
+            if(classes.get(parent).parentClass == null){
                 classes.put(classname, new classMap(classname, classes.get(parent)));
             }else{
                 throw new Exception("We only have single inheritance");
