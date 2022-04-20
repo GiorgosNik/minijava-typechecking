@@ -70,26 +70,13 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f17 -> "}"
      */
     public String visit(MainClass n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        n.f7.accept(this, argu);
-        n.f8.accept(this, argu);
-        n.f9.accept(this, argu);
-        n.f10.accept(this, argu);
-        n.f11.accept(this, argu);
-        n.f12.accept(this, argu);
-        n.f13.accept(this, argu);
-        n.f14.accept(this, argu);
-        n.f15.accept(this, argu);
-        n.f16.accept(this, argu);
-        n.f17.accept(this, argu);
-        return _ret;
+        classMap thisClass = classes.get(n.f1.accept(this, argu));
+        String name = "main";
+        System.out.println("TEST");
+        System.out.println(name);
+        method thisMethod = thisClass.methods.get(name);
+        n.f15.accept(this, thisMethod);
+        return null;
     }
 
     /**
@@ -587,6 +574,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(ArrayLength n, Object argu) throws Exception {
         System.out.println("ArrayLength");
         String type = n.f0.accept(this, argu);
+        type = isVal(type,(method)argu );
         if (!(type.equals("boolean[]") || type.equals("int[]"))) {
             throw new Exception("Exception: Length on Non-Array Object");
         }

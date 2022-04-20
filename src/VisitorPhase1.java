@@ -8,7 +8,8 @@ import visitor.GJDepthFirst;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-
+import java.util.ArrayList;
+import java.util.List;
 public class VisitorPhase1 extends GJDepthFirst<String, Object> {
 
     public LinkedHashMap<String, classMap> classes;
@@ -138,10 +139,25 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
         String myName = n.f2.accept(this, null);
         ((classMap) argu).addMethod(new method(myName, myType, (classMap) argu));
         n.f4.accept(this, ((classMap) argu).methods.get(myName));
+        if(((classMap) argu).parentClass!= null){
+            if(((classMap) argu).parentClass.methods.containsKey(myName)){
+                method parentMethod = ((classMap) argu).parentClass.methods.get(myName);
+                LinkedHashMap<String, variable> parentParams = parentMethod.formalParams;
+                List<variable> parentArgumentTypes= new ArrayList<variable>(parentParams.values());
+                List<variable> myArgumentTypes= new ArrayList<variable>(((classMap) argu).methods.get(myName).formalParams.values());
+                if(myArgumentTypes.size() != parentArgumentTypes.size()){
+                    throw new Exception("Exception: Arguments do not match overwriting method");
+                }else{
+                    for (int i = 0; i < parentArgumentTypes.size(); i++) {
+                        if(!parentArgumentTypes.get(i).Type.equals(myArgumentTypes.get(i).Type)){
+                            throw new Exception("Exception: Arguments do not match overwriting method");
+                        }
+                    }
+                }
+            }
+        }
         n.f7.accept(this, ((classMap) argu).methods.get(myName));
-
         n.f8.accept(this, null);
-
         return null;
     }
 
