@@ -162,7 +162,6 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
             if (classes.get(classes.get(classname).parentClass.Name).methodOffset.length > 0) {
                 tempMethodOffset = classes.get(classes.get(classname).parentClass.Name).methodOffset[classes
                         .get(classes.get(classname).parentClass.Name).methodOffset.length - 1] + 8;
-                tempMethodOffset = 0;
             } else {
                 tempMethodOffset = 0;
             }
@@ -175,6 +174,7 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
                 uniqueMethods++;
             }
         }
+        System.out.println(uniqueMethods);
 
         int[] fieldOffset = new int[fields.size()];
         int[] methodOffset = new int[uniqueMethods];

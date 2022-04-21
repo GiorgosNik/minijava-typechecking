@@ -10,7 +10,8 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public LinkedHashMap<String, classMap> classes;
 
     public String isVal(String name, method currMethod) throws Exception {
-        // Use this function, to retrieve a variable's or Object's type, given its name and scope
+        // Use this function, to retrieve a variable's or Object's type, given its name
+        // and scope
         String type = null;
         if ((name.equals("int") || name.equals("boolean") || name.equals("int[]") || name.equals("boolean[]")
                 || classes.containsKey(name))) {
@@ -23,11 +24,16 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
         } else if (currMethod.belongsTo.fields.containsKey(name)) {
             type = currMethod.belongsTo.fields.get(name).Type;
         } else if (currMethod.belongsTo.parentClass != null) {
-            if (currMethod.belongsTo.parentClass.fields.containsKey(name)) {
-                type = currMethod.belongsTo.parentClass.fields.get(name).Type;
-            } else {
-                throw new Exception("Exception: Variable does not exist");
+            classMap currClass = currMethod.belongsTo;
+            while (currClass.parentClass != null) {
+                if (currClass.parentClass.fields.containsKey(name)) {
+                    type = currClass.parentClass.fields.get(name).Type;
+                    break;
+                } else {
+                    currClass = currClass.parentClass;
+                }
             }
+
         } else {
             throw new Exception("Exception: Variable does not exist");
         }
@@ -212,7 +218,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
         String exprType = n.f5.accept(this, argu);
         exprType = isVal(exprType, (method) argu);
 
-        //Check that the value to assign to the array is of the correct type
+        // Check that the value to assign to the array is of the correct type
         if (arrayType.equals("int[]") && exprType.equals("int")) {
             return null;
         } else if (arrayType.equals("boolean[]") && exprType.equals("boolean")) {
@@ -292,7 +298,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(MessageSend n, Object argu) throws Exception {
         String className = n.f0.accept(this, argu);
-        method toCall;
+        method toCall = null;
 
         // Check that the object or class the method is called on, actually exists
         if ((!classes.containsKey(className)) && (!(((method) argu).formalParams.containsKey(className)
@@ -308,7 +314,8 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
             }
         }
 
-        // If the method is inherited, set the className to be the one of the parent class for future reference
+        // If the method is inherited, set the className to be the one of the parent
+        // class for future reference
         if (argu != null && !classes.containsKey(className)) {
             if (((method) argu).formalParams.containsKey(className)) {
                 className = ((method) argu).formalParams.get(className).Type;
@@ -326,11 +333,18 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
         if (classes.get(className).methods.containsKey(funcName)) {
             toCall = classes.get(className).methods.get(funcName);
         } else if (classes.get(className).parentClass != null) {
-            if (classes.get(className).parentClass.methods.containsKey(funcName)) {
-                toCall = classes.get(className).parentClass.methods.get(funcName);
-            } else {
+            while (classes.get(className).parentClass != null) {
+                if (classes.get(className).parentClass.methods.containsKey(funcName)) {
+                    toCall = classes.get(className).parentClass.methods.get(funcName);
+                    break;
+                } else {
+                    className = classes.get(className).parentClass.Name;
+                }
+            }
+            if (toCall == null) {
                 throw new Exception("Exception: No such method");
             }
+
         } else {
             System.out.println(className + " " + funcName);
             throw new Exception("Exception: No such method");
@@ -355,10 +369,12 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
                     if (classes.containsKey(isVal(parts[i], ((method) argu)))) {
                         if (!classes.get(isVal(parts[i], ((method) argu))).parentClass.Name
                                 .equals(formalParams.get(i).Type)) {
-                                    System.out.println(classes.get(isVal(parts[i], ((method) argu))).parentClass.Name+" "+formalParams.get(i).Type);
-                                    if(!(classes.get(isVal(parts[i], ((method) argu))).parentClass.parentClass.Name.equals(formalParams.get(i).Type))){
-                                        throw new Exception("Exception: Arguments do not match");
-                                    }
+                            System.out.println(classes.get(isVal(parts[i], ((method) argu))).parentClass.Name + " "
+                                    + formalParams.get(i).Type);
+                            if (!(classes.get(isVal(parts[i], ((method) argu))).parentClass.parentClass.Name
+                                    .equals(formalParams.get(i).Type))) {
+                                throw new Exception("Exception: Arguments do not match");
+                            }
                         }
                     } else {
                         throw new Exception("Exception: Arguments do not match");
