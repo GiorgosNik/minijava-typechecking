@@ -11,7 +11,10 @@ import java.util.Map.Entry;
 import java.util.ArrayList;
 import java.util.List;
 public class VisitorPhase1 extends GJDepthFirst<String, Object> {
-
+    public int currVarOffset;
+    public int prevVarOffset;
+    public int currMethodOffset;
+    public int prevMethodOffset;
     public LinkedHashMap<String, classMap> classes;
 
     /**
@@ -46,7 +49,7 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
         classes.get(classname).addMethod(new method("main", "void", classes.get(classname)));
         classes.get(classname).methods.get("main").addFormalParam(n.f11.accept(this, null), "String[]");
         n.f14.accept(this, classes.get(classname).methods.get("main"));
-        classes.get(classname).print();
+        //classes.get(classname).print();
         return null;
     }
 
@@ -68,6 +71,33 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
         }
         n.f3.accept(this, (Object) classes.get(classname));
         n.f4.accept(this, (Object) classes.get(classname));
+        //classes.get(classname).print();
+        List<variable> fields= new ArrayList<variable>(classes.get(classname).fields.values());
+        List<method> methods= new ArrayList<method>(classes.get(classname).methods.values());
+        int tempFieldOffset = 0;
+        int tempMethodOffset = 0;
+        classes.get(classname).fieldOffsets  = new ArrayList<>();
+        classes.get(classname).methodOffsets  = new ArrayList<>();
+        int[] fieldOffset = new int[fields.size()];
+        int[] methodOffset = new int[methods.size()];
+        for (int i = 0; i < fieldOffset.length; i++) {
+            fieldOffset[i] = tempFieldOffset;
+            classes.get(classname).fieldOffsets.add(classname+"."+fields.get(i).Name+": "+fieldOffset[i]);
+            if(fields.get(i).Type.equals("int")){
+                tempFieldOffset+=4;
+            }else if(fields.get(i).Type.equals("boolean")){
+                tempFieldOffset+=1;
+            }else{
+                tempFieldOffset+=8;
+            }
+        }
+        for (int i = 0; i < methodOffset.length; i++) {
+            methodOffset[i] = tempMethodOffset;
+            classes.get(classname).methodOffsets.add(classname+"."+methods.get(i).Name+": "+methodOffset[i]);
+            tempMethodOffset+=8;
+        }
+        classes.get(classname).fieldOffset=fieldOffset;
+        classes.get(classname).methodOffset=methodOffset;
         classes.get(classname).print();
         return null;
     }
@@ -95,6 +125,64 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
         }
         n.f5.accept(this, (Object) classes.get(classname));
         n.f6.accept(this, (Object) classes.get(classname));
+        //classes.get(classname).print();
+
+        List<variable> fields= new ArrayList<variable>(classes.get(classname).fields.values());
+        List<method> methods= new ArrayList<method>(classes.get(classname).methods.values());
+        List<variable> parentFields= new ArrayList<variable>(classes.get(classes.get(classname).parentClass.Name).fields.values());
+        List<method> parentMethods= new ArrayList<method>(classes.get(classes.get(classname).parentClass.Name).methods.values());
+
+        classes.get(classname).fieldOffsets  = new ArrayList<>();
+        classes.get(classname).methodOffsets  = new ArrayList<>();
+        int tempFieldOffset;
+        int tempMethodOffset;
+        int uniqueMethods = 0;
+        if(parentFields.size() >0){
+            tempFieldOffset = classes.get(classes.get(classname).parentClass.Name).fieldOffset[parentFields.size()-1];
+            if(parentFields.get(parentFields.size()-1).Type.equals("int")){
+                tempFieldOffset+=4;
+            }else if(parentFields.get(parentFields.size()-1).Type.equals("boolean")){
+                tempFieldOffset+=1;
+            }else{
+                tempFieldOffset+=8;
+            }
+        }else{
+            tempFieldOffset = 0;
+        }
+        if(parentMethods.size() >0){
+            tempMethodOffset = classes.get(classes.get(classname).parentClass.Name).fieldOffset[parentFields.size()-1] + 8;
+        }else{
+            tempMethodOffset = 0;
+        }
+        for (int i = 0; i < methods.size(); i++) {
+            if(!classes.get(classes.get(classname).parentClass.Name).methods.containsKey(methods.get(i).Name)){
+                uniqueMethods++;
+            }
+            
+        }
+
+        int[] fieldOffset = new int[fields.size()];
+        int[] methodOffset = new int[uniqueMethods];
+        for (int i = 0; i < fieldOffset.length; i++) {
+            fieldOffset[i] = tempFieldOffset;
+            classes.get(classname).fieldOffsets.add(classname+"."+fields.get(i).Name+": "+fieldOffset[i]);
+            if(fields.get(i).Type.equals("int")){
+                tempFieldOffset+=4;
+            }else if(fields.get(i).Type.equals("boolean")){
+                tempFieldOffset+=1;
+            }else{
+                tempFieldOffset+=8;
+            }
+        }
+        for (int i = 0; i < methodOffset.length; i++) {
+            if(!classes.get(classes.get(classname).parentClass.Name).methods.containsKey(methods.get(i).Name)){
+                methodOffset[i] = tempMethodOffset;
+                classes.get(classname).methodOffsets.add(classname+"."+methods.get(i).Name+": "+methodOffset[i]);
+                tempMethodOffset+=8;
+            }
+        }
+        classes.get(classname).fieldOffset=fieldOffset;
+        classes.get(classname).methodOffset=methodOffset;
         classes.get(classname).print();
         return null;
     }

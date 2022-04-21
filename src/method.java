@@ -1,8 +1,6 @@
 package src;
 
-import java.util.Map;
 import java.util.LinkedHashMap;
-import src.variable;
 
 public class method {
     public String Name;
