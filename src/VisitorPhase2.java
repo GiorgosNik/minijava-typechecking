@@ -1,27 +1,19 @@
 package src;
 
 import syntaxtree.*;
-import src.classMap;
-import src.method;
-import src.variable;
 import visitor.GJDepthFirst;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Iterator;
-import java.util.Set;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public LinkedHashMap<String, classMap> classes;
 
     public String isVal(String name, method currMethod) throws Exception {
+        // Use this function, to retrieve a variable's or Object's type, given its name and scope
         String type = null;
-        if((name.equals("int")||name.equals("boolean")||name.equals("int[]")||name.equals("boolean[]"))){
+        if ((name.equals("int") || name.equals("boolean") || name.equals("int[]") || name.equals("boolean[]")
+                || classes.containsKey(name))) {
             return name;
         }
         if (currMethod.formalParams.containsKey(name)) {
@@ -43,6 +35,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     }
 
     public void passSymbolTable(LinkedHashMap<String, classMap> givenMap) {
+        // Used to get the Symbol Table from Visitor #1
         classes = givenMap;
     }
 
@@ -67,19 +60,12 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f17 -> "}"
      */
     public String visit(MainClass n, Object argu) throws Exception {
+        // Expand and check any calls and declarations in the main class
         classMap thisClass = classes.get(n.f1.accept(this, argu));
         String name = "main";
         method thisMethod = thisClass.methods.get(name);
         n.f15.accept(this, thisMethod);
         return null;
-    }
-
-    /**
-     * f0 -> ClassDeclaration()
-     * | ClassExtendsDeclaration()
-     */
-    public String visit(TypeDeclaration n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
     }
 
     /**
@@ -135,10 +121,12 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
         String name = n.f2.accept(this, argu);
         method thisMethod = thisClass.methods.get(name);
         String returnType = n.f10.accept(this, thisMethod);
+        // Check method returns a known type
         if (!(returnType.equals("boolean") || returnType.equals("int") || returnType.equals("boolean[]")
                 || returnType.equals("int[]"))) {
             returnType = isVal(returnType, thisMethod);
         }
+        // Check the returned value actually is of the same type
         if (!type.equals(returnType)) {
             throw new Exception("Exception: Return Type does not match returned value");
         }
@@ -151,6 +139,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      * f0 -> "this"
      */
     public String visit(ThisExpression n, Object argu) throws Exception {
+        // Get the type of the item referred to by 'this'
         if (argu.getClass() == method.class) {
             return ((method) argu).belongsTo.Name;
         } else if (argu.getClass() == classMap.class) {
@@ -158,30 +147,6 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
         } else {
             throw new Exception("Exception: Bad use of 'THIS'");
         }
-    }
-
-    /**
-     * f0 -> ","
-     * f1 -> FormalParameter()
-     */
-    public String visit(FormalParameterTerm n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
-    }
-
-    /**
-     * f0 -> "{"
-     * f1 -> ( Statement() )*
-     * f2 -> "}"
-     */
-    public String visit(Block n, Object argu) throws Exception {
-        String _ret = null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
     }
 
     /**
@@ -195,11 +160,25 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
         String name = n.f0.accept(this, argu);
         String type = isVal(name, (method) argu);
         String exprType = n.f2.accept(this, argu);
-        if(!(exprType.equals("int")||exprType.equals("boolean")||exprType.equals("int[]")||exprType.equals("boolean[]"))&& !classes.containsKey(exprType)){
-            exprType = isVal(exprType,(method)argu);
+        // Check the expression is of a known type
+        if (!(exprType.equals("int") || exprType.equals("boolean") || exprType.equals("int[]")
+                || exprType.equals("boolean[]")) && !classes.containsKey(exprType)) {
+            exprType = isVal(exprType, (method) argu);
         }
+
+        // Check the variable is of the same type, or of the parent class if applicable
         if (!exprType.equals(type)) {
-            throw new Exception("Exception: Incomatible Assignement");
+            if (classes.containsKey(exprType)) {
+                if (classes.get(exprType).parentClass != null) {
+                    if (!classes.get(exprType).parentClass.Name.equals(type)) {
+                        throw new Exception("Exception: Incomatible Assignement");
+                    }
+                } else {
+                    throw new Exception("Exception: Incomatible Assignement");
+                }
+            } else {
+                throw new Exception("Exception: Incomatible Assignement");
+            }
         }
         return null;
     }
@@ -217,17 +196,23 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(ArrayAssignmentStatement n, Object argu) throws Exception {
         String arrayName = n.f0.accept(this, argu);
         String arrayType = isVal(arrayName, (method) argu);
-        arrayType = isVal(arrayType,(method)argu);
+        arrayType = isVal(arrayType, (method) argu);
+
+        // Check that the identifier is indeed of array-type
         if (!(arrayType.equals("int[]") || arrayType.equals("boolean[]"))) {
             throw new Exception("Exception: Array Assignement to Non-Array Type");
         }
+
+        // Check that the index is of type integer
         String indexType = n.f2.accept(this, argu);
-        indexType = isVal(indexType,(method)argu);
+        indexType = isVal(indexType, (method) argu);
         if (!indexType.equals("int")) {
             throw new Exception("Exception: Array Assignement with Non-Integer Index");
         }
         String exprType = n.f5.accept(this, argu);
-        exprType = isVal(exprType,(method)argu);
+        exprType = isVal(exprType, (method) argu);
+
+        //Check that the value to assign to the array is of the correct type
         if (arrayType.equals("int[]") && exprType.equals("int")) {
             return null;
         } else if (arrayType.equals("boolean[]") && exprType.equals("boolean")) {
@@ -250,7 +235,8 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(IfStatement n, Object argu) throws Exception {
         String _ret = null;
         String ifCondtion = n.f2.accept(this, argu);
-        ifCondtion = isVal(ifCondtion, (method)argu);
+        ifCondtion = isVal(ifCondtion, (method) argu);
+        // Check that the condition has boolean value
         if (!ifCondtion.equals("boolean")) {
             throw new Exception("Exception: If statement has Non-Boolean Condition");
         }
@@ -268,14 +254,13 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(WhileStatement n, Object argu) throws Exception {
-        String _ret = null;
         String loopCondtion = n.f2.accept(this, argu);
-        loopCondtion = isVal(loopCondtion,(method)argu);
+        loopCondtion = isVal(loopCondtion, (method) argu);
         if (!loopCondtion.equals("boolean")) {
             throw new Exception("Exception: Loop has Non-Boolean Condition");
         }
         n.f4.accept(this, argu);
-        return _ret;
+        return null;
     }
 
     /**
@@ -288,27 +273,12 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(PrintStatement n, Object argu) throws Exception {
         String type = n.f2.accept(this, argu);
-        type = isVal(type,(method)argu);
-        if(!(type.equals("int")||type.equals("boolean"))){
+        type = isVal(type, (method) argu);
+        // Check that the condition has boolean value
+        if (!(type.equals("int") || type.equals("boolean"))) {
             throw new Exception("Exception: Cant print this object");
         }
         return null;
-    }
-
-    /**
-     * f0 -> AndExpression()
-     * | CompareExpression()
-     * | PlusExpression()
-     * | MinusExpression()
-     * | TimesExpression()
-     * | ArrayLookup()
-     * | ArrayLength()
-     * | MessageSend()
-     * | Clause()
-     */
-    @Override
-    public String visit(Expression n, Object argu) throws Exception {
-        return n.f0.accept(this, argu);
     }
 
     /**
@@ -323,30 +293,37 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     public String visit(MessageSend n, Object argu) throws Exception {
         String className = n.f0.accept(this, argu);
         method toCall;
-        if ((!classes.containsKey(className))&&(!(((method)argu).formalParams.containsKey(className) || ((method)argu).definedVars.containsKey(className) ))) {
-            if(!((method)argu).belongsTo.fields.containsKey(className)){
-                if(((method)argu).belongsTo.parentClass != null){
-                    if(!((method)argu).belongsTo.parentClass.fields.containsKey(className)){
+
+        // Check that the object or class the method is called on, actually exists
+        if ((!classes.containsKey(className)) && (!(((method) argu).formalParams.containsKey(className)
+                || ((method) argu).definedVars.containsKey(className)))) {
+            if (!((method) argu).belongsTo.fields.containsKey(className)) {
+                if (((method) argu).belongsTo.parentClass != null) {
+                    if (!((method) argu).belongsTo.parentClass.fields.containsKey(className)) {
                         throw new Exception("Exception: No such class or variable");
                     }
-                }else{
+                } else {
                     throw new Exception("Exception: No such class or variable");
                 }
             }
         }
-        if(argu!=null && !classes.containsKey(className)){
-            if(((method)argu).formalParams.containsKey(className)){
-                className = ((method)argu).formalParams.get(className).Type;
-            }else if(((method)argu).definedVars.containsKey(className) ){
-                className = ((method)argu).definedVars.get(className).Type;
-            }else if(((method)argu).belongsTo.fields.containsKey(className)){
-                className = ((method)argu).belongsTo.fields.get(className).Type;
-            }else if(((method)argu).belongsTo.parentClass.fields.containsKey(className)){
-                className = ((method)argu).belongsTo.parentClass.fields.get(className).Type;
+
+        // If the method is inherited, set the className to be the one of the parent class for future reference
+        if (argu != null && !classes.containsKey(className)) {
+            if (((method) argu).formalParams.containsKey(className)) {
+                className = ((method) argu).formalParams.get(className).Type;
+            } else if (((method) argu).definedVars.containsKey(className)) {
+                className = ((method) argu).definedVars.get(className).Type;
+            } else if (((method) argu).belongsTo.fields.containsKey(className)) {
+                className = ((method) argu).belongsTo.fields.get(className).Type;
+            } else if (((method) argu).belongsTo.parentClass.fields.containsKey(className)) {
+                className = ((method) argu).belongsTo.parentClass.fields.get(className).Type;
             }
         }
+
+        // Check the method belongs to the class
         String funcName = n.f2.accept(this, argu);
-        if (classes.get(className).methods.containsKey(funcName)){
+        if (classes.get(className).methods.containsKey(funcName)) {
             toCall = classes.get(className).methods.get(funcName);
         } else if (classes.get(className).parentClass != null) {
             if (classes.get(className).parentClass.methods.containsKey(funcName)) {
@@ -355,10 +332,12 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
                 throw new Exception("Exception: No such method");
             }
         } else {
+            System.out.println(className + " " + funcName);
             throw new Exception("Exception: No such method");
         }
-        int[] iarr = { 0 };
-        boolean[] check = {false};
+
+        // Check that the arguments and the formal parameters match
+        // First get both, and compare their size
         String typeString = "" + n.f4.accept(this, argu);
         if (typeString.length() == 0 && !toCall.formalParams.isEmpty()) {
             throw new Exception("Exception: Arguments do not match");
@@ -367,19 +346,27 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
         if (parts.length != toCall.formalParams.size() && !toCall.formalParams.isEmpty()) {
             throw new Exception("Exception: Arguments do not match");
         }
-        toCall.formalParams.forEach((key, value) -> {
-            try {
-                if (!(toCall.formalParams.get(key).Type.equals(isVal(parts[iarr[0]],toCall)))) {
-                    check[0] = true;
-                }
-                iarr[0]++;
-            } catch (Exception e) {
-                
-            }
-        });
-        if (check[0]){
 
-            throw new Exception("Exception: Arguments do not match");
+        // If they are the same size, check the type of each argument in order
+        List<variable> formalParams = new ArrayList<variable>(toCall.formalParams.values());
+        for (int i = 0; i < formalParams.size(); i++) {
+            if (!(formalParams.get(i).Type.equals(isVal(parts[i], ((method) argu))))) {
+                if (classes.containsKey(formalParams.get(i).Type)) {
+                    if (classes.containsKey(isVal(parts[i], ((method) argu)))) {
+                        if (!classes.get(isVal(parts[i], ((method) argu))).parentClass.Name
+                                .equals(formalParams.get(i).Type)) {
+                                    System.out.println(classes.get(isVal(parts[i], ((method) argu))).parentClass.Name+" "+formalParams.get(i).Type);
+                                    if(!(classes.get(isVal(parts[i], ((method) argu))).parentClass.parentClass.Name.equals(formalParams.get(i).Type))){
+                                        throw new Exception("Exception: Arguments do not match");
+                                    }
+                        }
+                    } else {
+                        throw new Exception("Exception: Arguments do not match");
+                    }
+                } else {
+                    throw new Exception("Exception: Arguments do not match");
+                }
+            }
         }
         return toCall.Type;
     }
@@ -426,9 +413,9 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(AndExpression n, Object argu) throws Exception {
         String type1 = n.f0.accept(this, argu);
-        type1 = isVal(type1, (method)argu);
+        type1 = isVal(type1, (method) argu);
         String type2 = n.f2.accept(this, argu);
-        type2 = isVal(type2, (method)argu);
+        type2 = isVal(type2, (method) argu);
         if (!(type1.equals("boolean") && type2.equals("boolean"))) {
             throw new Exception("Exception: And operation on Non-Boolean");
         }
@@ -443,9 +430,9 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(CompareExpression n, Object argu) throws Exception {
         String type1 = n.f0.accept(this, argu);
-        type1 = isVal(type1, (method)argu);
+        type1 = isVal(type1, (method) argu);
         String type2 = n.f2.accept(this, argu);
-        type2 = isVal(type2, (method)argu);
+        type2 = isVal(type2, (method) argu);
         if (!(type1.equals("int") && type2.equals("int"))) {
             throw new Exception("Exception: Comparison of Non Int Elements");
         }
@@ -460,9 +447,9 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(PlusExpression n, Object argu) throws Exception {
         String type1 = n.f0.accept(this, argu);
-        type1 = isVal(type1, (method)argu);
+        type1 = isVal(type1, (method) argu);
         String type2 = n.f2.accept(this, argu);
-        type2 = isVal(type2, (method)argu);
+        type2 = isVal(type2, (method) argu);
         if (!(type1.equals("int") && type2.equals("int"))) {
             throw new Exception("Exception: Addition of Non Int Elements");
         }
@@ -477,9 +464,9 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(MinusExpression n, Object argu) throws Exception {
         String type1 = n.f0.accept(this, argu);
-        type1 = isVal(type1, (method)argu);
+        type1 = isVal(type1, (method) argu);
         String type2 = n.f2.accept(this, argu);
-        type2 = isVal(type2, (method)argu);
+        type2 = isVal(type2, (method) argu);
         if (!(type1.equals("int") && type2.equals("int"))) {
             throw new Exception("Exception: Subtraction of Non Int Elements");
         }
@@ -495,12 +482,12 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(ArrayLookup n, Object argu) throws Exception {
         String arrayName = n.f0.accept(this, argu);
-        String arrayType = isVal(arrayName,(method)argu);
+        String arrayType = isVal(arrayName, (method) argu);
         if (!(arrayType.equals("int[]") || arrayType.equals("boolean[]"))) {
             throw new Exception("Exception: Array Lookup in Non-Array Expression");
         }
         String indexName = n.f2.accept(this, argu);
-        String indexType = isVal(indexName,(method)argu);
+        String indexType = isVal(indexName, (method) argu);
         if (!indexType.equals("int")) {
             throw new Exception("Exception: Array Lookup with Non-Integer Index");
         }
@@ -529,9 +516,9 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(TimesExpression n, Object argu) throws Exception {
         String type1 = n.f0.accept(this, argu);
-        type1 = isVal(type1, (method)argu);
+        type1 = isVal(type1, (method) argu);
         String type2 = n.f2.accept(this, argu);
-        type2 = isVal(type2, (method)argu);
+        type2 = isVal(type2, (method) argu);
         if (!(type1.equals("int") && type2.equals("int"))) {
             throw new Exception("Exception: Multiplication of Non Int Elements");
         }
@@ -546,7 +533,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(ArrayLength n, Object argu) throws Exception {
         String type = n.f0.accept(this, argu);
-        type = isVal(type,(method)argu );
+        type = isVal(type, (method) argu);
         if (!(type.equals("boolean[]") || type.equals("int[]"))) {
             throw new Exception("Exception: Length on Non-Array Object");
         }
@@ -579,7 +566,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(BooleanArrayAllocationExpression n, Object argu) throws Exception {
         String expressionType = n.f3.accept(this, argu);
-        expressionType = isVal(expressionType,(method)argu);
+        expressionType = isVal(expressionType, (method) argu);
         if (!expressionType.equals("int")) {
             throw new Exception("Exception: Non-Integer expression in array allocation");
         }
@@ -596,7 +583,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(IntegerArrayAllocationExpression n, Object argu) throws Exception {
         String expressionType = n.f3.accept(this, argu);
-        expressionType = isVal(expressionType,(method)argu);
+        expressionType = isVal(expressionType, (method) argu);
         if (!expressionType.equals("int")) {
             throw new Exception("Exception: Non-Integer expression in array allocation");
         }
@@ -633,7 +620,7 @@ public class VisitorPhase2 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(NotExpression n, Object argu) throws Exception {
         String type = n.f1.accept(this, argu);
-        type = isVal(type, (method)argu);
+        type = isVal(type, (method) argu);
         if (!type.equals("boolean")) {
             throw new Exception("Exception: 'Not' on Non-Boolean expresion");
         }

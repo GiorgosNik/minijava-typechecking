@@ -1,15 +1,11 @@
 package src;
 
 import syntaxtree.*;
-import src.classMap;
-import src.method;
-import src.variable;
 import visitor.GJDepthFirst;
 import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.ArrayList;
 import java.util.List;
+
 public class VisitorPhase1 extends GJDepthFirst<String, Object> {
     public int currVarOffset;
     public int prevVarOffset;
@@ -46,10 +42,10 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
         } else {
             classes.put(classname, new classMap(classname));
         }
+        // The main class functions similarly to a simple class declaration, with a single method with standard arguments and return type
         classes.get(classname).addMethod(new method("main", "void", classes.get(classname)));
         classes.get(classname).methods.get("main").addFormalParam(n.f11.accept(this, null), "String[]");
         n.f14.accept(this, classes.get(classname).methods.get("main"));
-        //classes.get(classname).print();
         return null;
     }
 
@@ -63,41 +59,50 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(ClassDeclaration n, Object argu) throws Exception {
+
+        // Get the name of the class, check it is unique
         String classname = n.f1.accept(this, null);
         if (classes.containsKey(classname)) {
             throw new Exception("Class Exists");
         } else {
             classes.put(classname, new classMap(classname));
         }
+
+        // Get the fields and methods of the class, pass this class as argument to establish scope
         n.f3.accept(this, (Object) classes.get(classname));
         n.f4.accept(this, (Object) classes.get(classname));
-        //classes.get(classname).print();
-        List<variable> fields= new ArrayList<variable>(classes.get(classname).fields.values());
-        List<method> methods= new ArrayList<method>(classes.get(classname).methods.values());
+
+        // After the fields and methods have been checked, calculate their offset
+        List<variable> fields = new ArrayList<variable>(classes.get(classname).fields.values());
+        List<method> methods = new ArrayList<method>(classes.get(classname).methods.values());
         int tempFieldOffset = 0;
         int tempMethodOffset = 0;
-        classes.get(classname).fieldOffsets  = new ArrayList<>();
-        classes.get(classname).methodOffsets  = new ArrayList<>();
         int[] fieldOffset = new int[fields.size()];
         int[] methodOffset = new int[methods.size()];
+
+        // Calculate field offset
         for (int i = 0; i < fieldOffset.length; i++) {
             fieldOffset[i] = tempFieldOffset;
-            classes.get(classname).fieldOffsets.add(classname+"."+fields.get(i).Name+": "+fieldOffset[i]);
-            if(fields.get(i).Type.equals("int")){
-                tempFieldOffset+=4;
-            }else if(fields.get(i).Type.equals("boolean")){
-                tempFieldOffset+=1;
-            }else{
-                tempFieldOffset+=8;
+            classes.get(classname).fieldOffsets.add(classname + "." + fields.get(i).Name + ": " + fieldOffset[i]);
+            if (fields.get(i).Type.equals("int")) {
+                tempFieldOffset += 4;
+            } else if (fields.get(i).Type.equals("boolean")) {
+                tempFieldOffset += 1;
+            } else {
+                tempFieldOffset += 8;
             }
         }
+
+        // Calculate method offset
         for (int i = 0; i < methodOffset.length; i++) {
             methodOffset[i] = tempMethodOffset;
-            classes.get(classname).methodOffsets.add(classname+"."+methods.get(i).Name+": "+methodOffset[i]);
-            tempMethodOffset+=8;
+            classes.get(classname).methodOffsets.add(classname + "." + methods.get(i).Name + ": " + methodOffset[i]);
+            tempMethodOffset += 8;
         }
-        classes.get(classname).fieldOffset=fieldOffset;
-        classes.get(classname).methodOffset=methodOffset;
+
+        // Set the offset in the classMap Object
+        classes.get(classname).fieldOffset = fieldOffset;
+        classes.get(classname).methodOffset = methodOffset;
         classes.get(classname).print();
         return null;
     }
@@ -114,8 +119,13 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(ClassExtendsDeclaration n, Object argu) throws Exception {
+
+        // The ClassExtendsDeclaration differs from the simple ClassDeclaration in matters of inheritance
+        // Specifically, we have to get the offset of the parent class, as well as the correctness of the methods we overwrite
         String classname = n.f1.accept(this, null);
         String parent = n.f3.accept(this, null);
+
+        // Check that parent class exists
         if (classes.containsKey(classname)) {
             throw new Exception("Class Exists");
         } else if (classes.containsKey(parent)) {
@@ -125,64 +135,70 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
         }
         n.f5.accept(this, (Object) classes.get(classname));
         n.f6.accept(this, (Object) classes.get(classname));
-        //classes.get(classname).print();
+        List<variable> fields = new ArrayList<variable>(classes.get(classname).fields.values());
+        List<method> methods = new ArrayList<method>(classes.get(classname).methods.values());
+        List<variable> parentFields = new ArrayList<variable>(
+                classes.get(classes.get(classname).parentClass.Name).fields.values());
 
-        List<variable> fields= new ArrayList<variable>(classes.get(classname).fields.values());
-        List<method> methods= new ArrayList<method>(classes.get(classname).methods.values());
-        List<variable> parentFields= new ArrayList<variable>(classes.get(classes.get(classname).parentClass.Name).fields.values());
-        List<method> parentMethods= new ArrayList<method>(classes.get(classes.get(classname).parentClass.Name).methods.values());
-
-        classes.get(classname).fieldOffsets  = new ArrayList<>();
-        classes.get(classname).methodOffsets  = new ArrayList<>();
         int tempFieldOffset;
         int tempMethodOffset;
         int uniqueMethods = 0;
-        if(parentFields.size() >0){
-            tempFieldOffset = classes.get(classes.get(classname).parentClass.Name).fieldOffset[parentFields.size()-1];
-            if(parentFields.get(parentFields.size()-1).Type.equals("int")){
-                tempFieldOffset+=4;
-            }else if(parentFields.get(parentFields.size()-1).Type.equals("boolean")){
-                tempFieldOffset+=1;
-            }else{
-                tempFieldOffset+=8;
+
+        // Calculate offset for fields and variables, using the offset of the parent class
+        if (parentFields.size() > 0) {
+            tempFieldOffset = classes.get(classes.get(classname).parentClass.Name).fieldOffset[parentFields.size() - 1];
+            if (parentFields.get(parentFields.size() - 1).Type.equals("int")) {
+                tempFieldOffset += 4;
+            } else if (parentFields.get(parentFields.size() - 1).Type.equals("boolean")) {
+                tempFieldOffset += 1;
+            } else {
+                tempFieldOffset += 8;
             }
-        }else{
+        } else {
             tempFieldOffset = 0;
         }
-        if(parentMethods.size() >0){
-            tempMethodOffset = classes.get(classes.get(classname).parentClass.Name).fieldOffset[parentFields.size()-1] + 8;
-        }else{
+        if (classes.get(classes.get(classname).parentClass.Name).methodOffset != null) {
+
+            if (classes.get(classes.get(classname).parentClass.Name).methodOffset.length > 0) {
+                tempMethodOffset = classes.get(classes.get(classname).parentClass.Name).methodOffset[classes
+                        .get(classes.get(classname).parentClass.Name).methodOffset.length - 1] + 8;
+                tempMethodOffset = 0;
+            } else {
+                tempMethodOffset = 0;
+            }
+        } else {
             tempMethodOffset = 0;
         }
+
         for (int i = 0; i < methods.size(); i++) {
-            if(!classes.get(classes.get(classname).parentClass.Name).methods.containsKey(methods.get(i).Name)){
+            if (!classes.get(classes.get(classname).parentClass.Name).methods.containsKey(methods.get(i).Name)) {
                 uniqueMethods++;
             }
-            
         }
 
         int[] fieldOffset = new int[fields.size()];
         int[] methodOffset = new int[uniqueMethods];
         for (int i = 0; i < fieldOffset.length; i++) {
             fieldOffset[i] = tempFieldOffset;
-            classes.get(classname).fieldOffsets.add(classname+"."+fields.get(i).Name+": "+fieldOffset[i]);
-            if(fields.get(i).Type.equals("int")){
-                tempFieldOffset+=4;
-            }else if(fields.get(i).Type.equals("boolean")){
-                tempFieldOffset+=1;
-            }else{
-                tempFieldOffset+=8;
+            classes.get(classname).fieldOffsets.add(classname + "." + fields.get(i).Name + ": " + fieldOffset[i]);
+            if (fields.get(i).Type.equals("int")) {
+                tempFieldOffset += 4;
+            } else if (fields.get(i).Type.equals("boolean")) {
+                tempFieldOffset += 1;
+            } else {
+                tempFieldOffset += 8;
             }
         }
         for (int i = 0; i < methodOffset.length; i++) {
-            if(!classes.get(classes.get(classname).parentClass.Name).methods.containsKey(methods.get(i).Name)){
+            if (!classes.get(classes.get(classname).parentClass.Name).methods.containsKey(methods.get(i).Name)) {
                 methodOffset[i] = tempMethodOffset;
-                classes.get(classname).methodOffsets.add(classname+"."+methods.get(i).Name+": "+methodOffset[i]);
-                tempMethodOffset+=8;
+                classes.get(classname).methodOffsets
+                        .add(classname + "." + methods.get(i).Name + ": " + methodOffset[i]);
+                tempMethodOffset += 8;
             }
         }
-        classes.get(classname).fieldOffset=fieldOffset;
-        classes.get(classname).methodOffset=methodOffset;
+        classes.get(classname).fieldOffset = fieldOffset;
+        classes.get(classname).methodOffset = methodOffset;
         classes.get(classname).print();
         return null;
     }
@@ -194,6 +210,7 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(VarDeclaration n, Object argu) throws Exception {
+        // Cases for the place the variable is defined, in a method or as class field, used to establish the scope
         if (argu.getClass() == method.class) {
             String type = n.f0.accept(this, null);
             String varName = n.f1.accept(this, null);
@@ -223,21 +240,25 @@ public class VisitorPhase1 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(MethodDeclaration n, Object argu) throws Exception {
+
+        //Get the name and return type, and create the method in the given class, passed as argument
         String myType = n.f1.accept(this, null);
         String myName = n.f2.accept(this, null);
         ((classMap) argu).addMethod(new method(myName, myType, (classMap) argu));
         n.f4.accept(this, ((classMap) argu).methods.get(myName));
-        if(((classMap) argu).parentClass!= null){
-            if(((classMap) argu).parentClass.methods.containsKey(myName)){
+        if (((classMap) argu).parentClass != null) {
+            // If we are trying to overwrite, check arguments match 1-1
+            if (((classMap) argu).parentClass.methods.containsKey(myName)) {
                 method parentMethod = ((classMap) argu).parentClass.methods.get(myName);
                 LinkedHashMap<String, variable> parentParams = parentMethod.formalParams;
-                List<variable> parentArgumentTypes= new ArrayList<variable>(parentParams.values());
-                List<variable> myArgumentTypes= new ArrayList<variable>(((classMap) argu).methods.get(myName).formalParams.values());
-                if(myArgumentTypes.size() != parentArgumentTypes.size()){
+                List<variable> parentArgumentTypes = new ArrayList<variable>(parentParams.values());
+                List<variable> myArgumentTypes = new ArrayList<variable>(
+                        ((classMap) argu).methods.get(myName).formalParams.values());
+                if (myArgumentTypes.size() != parentArgumentTypes.size()) {
                     throw new Exception("Exception: Arguments do not match overwriting method");
-                }else{
+                } else {
                     for (int i = 0; i < parentArgumentTypes.size(); i++) {
-                        if(!parentArgumentTypes.get(i).Type.equals(myArgumentTypes.get(i).Type)){
+                        if (!parentArgumentTypes.get(i).Type.equals(myArgumentTypes.get(i).Type)) {
                             throw new Exception("Exception: Arguments do not match overwriting method");
                         }
                     }

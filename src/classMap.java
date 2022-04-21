@@ -19,12 +19,16 @@ public class classMap {
     public classMap(String name) {
         Name = name;
         parentClass = null;
+        fieldOffsets  = new ArrayList<>();
+        methodOffsets  = new ArrayList<>();
         methods = new LinkedHashMap<String, method>();
         fields = new LinkedHashMap<String, variable>();
     }
     public classMap(String name, classMap parent) {
         Name = name;
         parentClass = parent;
+        fieldOffsets  = new ArrayList<>();
+        methodOffsets  = new ArrayList<>();
         methods = new LinkedHashMap<String, method>();
         fields = new LinkedHashMap<String, variable>();
     }
