@@ -306,42 +306,6 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     // }
     // }
 
-    // /**
-    // * f0 -> Identifier()
-    // * f1 -> "="
-    // * f2 -> Expression()
-    // * f3 -> ";"
-    // */
-    // @Override
-    // public String visit(AssignmentStatement n, Object argu) throws Exception {
-    // String name = n.f0.accept(this, argu);
-    // String type = isVal(name, (method) argu);
-    // String exprType = n.f2.accept(this, argu);
-    // // Check the expression is of a known type
-    // if (!(exprType.equals("int") || exprType.equals("boolean") ||
-    // exprType.equals("int[]")
-    // || exprType.equals("boolean[]")) && !classes.containsKey(exprType)) {
-    // exprType = isVal(exprType, (method) argu);
-    // }
-
-    // // Check the variable is of the same type, or of the parent class if
-    // applicable
-    // if (!exprType.equals(type)) {
-    // if (classes.containsKey(exprType)) {
-    // if (classes.get(exprType).parentClass != null) {
-    // if (!classes.get(exprType).parentClass.Name.equals(type)) {
-    // throw new Exception("Exception: Incomatible Assignement");
-    // }
-    // } else {
-    // throw new Exception("Exception: Incomatible Assignement");
-    // }
-    // } else {
-    // throw new Exception("Exception: Incomatible Assignement");
-    // }
-    // }
-    // return null;
-    // }
-
     /**
      * f0 -> Identifier()
      * f1 -> "["
@@ -436,24 +400,25 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     public String visit(WhileStatement n, Object argu) throws Exception {
         int WhileExpressionLabel = labelCounter;
         labelCounter++;
-        
+
         // Jump to the start of the loop
-        System.out.println("br label %while_top_"+WhileExpressionLabel);
-        System.out.println("while_top_" +WhileExpressionLabel+ ":");
+        System.out.println("br label %while_top_" + WhileExpressionLabel);
+        System.out.println("while_top_" + WhileExpressionLabel + ":");
 
         // Create condition and jump based on result
         String loopCondtion = n.f2.accept(this, argu);
         if (isVar(loopCondtion, (method) argu) != null) {
             loopCondtion = loadVarToRegister(loopCondtion, "boolean");
         }
-        System.out.println("br i1 " + loopCondtion + ", label %while_in_" + WhileExpressionLabel + ", label %while_out_" + WhileExpressionLabel);
+        System.out.println("br i1 " + loopCondtion + ", label %while_in_" + WhileExpressionLabel + ", label %while_out_"
+                + WhileExpressionLabel);
 
         // In the loop
-        System.out.println("while_in_" +WhileExpressionLabel+ ":");
+        System.out.println("while_in_" + WhileExpressionLabel + ":");
         n.f4.accept(this, argu);
-        System.out.println("br label %while_top_"+WhileExpressionLabel);
+        System.out.println("br label %while_top_" + WhileExpressionLabel);
 
-        System.out.println("while_out_" +WhileExpressionLabel+ ":");
+        System.out.println("while_out_" + WhileExpressionLabel + ":");
         return null;
     }
 
@@ -800,16 +765,6 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         return "%_" + (registerCounter - 1);
     }
 
-    // /**
-    // * f0 -> NotExpression()
-    // * | PrimaryExpression()
-    // */
-    // @Override
-    // public String visit(Clause n, Object argu) throws Exception {
-    // String type = n.f0.accept(this, argu);
-    // return type;
-    // }
-
     /**
      * f0 -> PrimaryExpression()
      * f1 -> "*"
@@ -1026,12 +981,12 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         return "int[]";
     }
 
-    // /**
-    // * f0 -> "new"
-    // * f1 -> Identifier()
-    // * f2 -> "("
-    // * f3 -> ")"
-    // */
+    /**
+     * f0 -> "new"
+     * f1 -> Identifier()
+     * f2 -> "("
+     * f3 -> ")"
+     */
     @Override
     public String visit(AllocationExpression n, Object argu) throws Exception {
         List<variable> variableList = null; // new ArrayList<variable>(map.values());
@@ -1098,12 +1053,13 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(NotExpression n, Object argu) throws Exception {
-        String type = n.f1.accept(this, argu);
-        type = isVar(type, (method) argu);
-        if (!type.equals("boolean")) {
-            throw new Exception("Exception: 'Not' on Non-Boolean expresion");
+        String clause = n.f1.accept(this, argu);
+        if (isVar(clause, (method) argu) != null) {
+            clause = loadVarToRegister(clause, "boolean");
         }
-        return type;
+        System.out.println("%_" + registerCounter + " = xor i1 1, " + clause);
+        registerCounter++;
+        return "%_"+(registerCounter-1);
     }
 
     @Override
