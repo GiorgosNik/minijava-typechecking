@@ -8,6 +8,7 @@ compile:
 	javac ./src/classMap.java
 	javac ./src/VisitorPhase1.java
 	javac ./src/VisitorPhase2.java
+	javac ./src/VisitorPhase3.java
 	javac ./Main.java
 
 clean:

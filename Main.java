@@ -6,6 +6,7 @@ import java.io.IOException;
 
 import src.VisitorPhase1;
 import src.VisitorPhase2;
+import src.VisitorPhase3;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -36,6 +37,10 @@ public class Main {
                 VisitorPhase2 checker = new VisitorPhase2();
                 checker.passSymbolTable(eval.classes);
                 root.accept(checker, null);
+
+                VisitorPhase3 llvmComp = new VisitorPhase3();
+                llvmComp.passSymbolTable(eval.classes);
+                root.accept(llvmComp, null);
 
                 // The program was checked
                 passed++;
