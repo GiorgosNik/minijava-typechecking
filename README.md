@@ -19,3 +19,5 @@ Both of the above classes feature the functions needed to access or modify their
 
 ### The main function
 The main function loops through the given list of files, checking them one by one. If an error is found, an exception is caught by the main function, and the execution continues with the next file. For each file, the main function prints information regarding its name and the name offset of its methods.
+
+The program is created using  `make` and run using  `Java Main [inputFiles]`
