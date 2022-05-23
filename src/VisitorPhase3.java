@@ -11,26 +11,288 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     public LinkedHashMap<String, String> variableRegister;
     public int registerCounter;
     public int labelCounter;
+    public String lastAlloc;
+    method methodObject = null;
 
-    public String loadVarToRegister(String name, String Type) {
-        if (Type == "int[]") {
-            System.out.println("%_" + registerCounter + " = load i32*, i32** " + variableRegister.get(name));
-        } else if (Type == "int") {
-            System.out.println("%_" + registerCounter + " = load i32, i32* " + variableRegister.get(name));
-        } else if (Type == "boolean") {
-            System.out.println("%_" + registerCounter + " = load i1, i1* " + variableRegister.get(name));
-        } else if (classes.containsKey(Type)) {
-            System.out.println("%_" + registerCounter + " = load i8*, i8** " + variableRegister.get(name));
+    public method getMethod(classMap objectClass, String calledMethod) {
+        classMap thisClass = objectClass;
+        List<classMap> parentList = new ArrayList<classMap>();
+        LinkedHashMap<String, method> uniqueMethods;
+        classMap parentClass = null;
+
+        // Initialize the counters for the registers and labels;
+        uniqueMethods = new LinkedHashMap<String, method>();
+
+        // Methods defined in parent classes
+        if (thisClass.parentClass != null) {
+            parentClass = thisClass.parentClass;
         }
+        while (parentClass != null) {
+            parentList.add(parentClass);
+            if (parentClass.parentClass != null) {
+                parentClass = parentClass.parentClass;
+            } else {
+                parentClass = null;
+            }
+        }
+
+        // Loop for parent classes
+        for (int i = 0; i < parentList.size(); i++) {
+            // Loop for methods of parent class
+            for (String parentMethod : parentList.get(i).methods.keySet()) {
+                if (uniqueMethods.containsKey(parentMethod)) {
+                    uniqueMethods.replace(parentMethod, parentList.get(i).methods.get(parentMethod));
+                } else {
+                    uniqueMethods.put(parentMethod, parentList.get(i).methods.get(parentMethod));
+                }
+            }
+        }
+
+        for (String methodKey : thisClass.methods.keySet()) {
+            if (uniqueMethods.containsKey(methodKey)) {
+                uniqueMethods.replace(methodKey, thisClass.methods.get(methodKey));
+            } else {
+                uniqueMethods.put(methodKey, thisClass.methods.get(methodKey));
+            }
+        }
+        for (String methodKey : uniqueMethods.keySet()) {
+            if (methodKey == calledMethod) {
+                methodObject = uniqueMethods.get(methodKey);
+            }
+        }
+
+        return methodObject;
+    }
+
+    public int getVtableSize(classMap objectClass) {
+        classMap thisClass = objectClass;
+        List<classMap> parentList = new ArrayList<classMap>();
+        LinkedHashMap<String, method> uniqueMethods;
+        classMap parentClass = null;
+        int index = 0;
+
+        // Initialize the counters for the registers and labels;
+        uniqueMethods = new LinkedHashMap<String, method>();
+
+        // Methods defined in parent classes
+        if (thisClass.parentClass != null) {
+            parentClass = thisClass.parentClass;
+        }
+        while (parentClass != null) {
+            parentList.add(parentClass);
+            if (parentClass.parentClass != null) {
+                parentClass = parentClass.parentClass;
+            } else {
+                parentClass = null;
+            }
+        }
+
+        // Loop for parent classes
+        for (int i = 0; i < parentList.size(); i++) {
+            // Loop for methods of parent class
+            for (String parentMethod : parentList.get(i).methods.keySet()) {
+                if (uniqueMethods.containsKey(parentMethod)) {
+                    uniqueMethods.replace(parentMethod, parentList.get(i).methods.get(parentMethod));
+                } else {
+                    uniqueMethods.put(parentMethod, parentList.get(i).methods.get(parentMethod));
+                }
+            }
+        }
+
+        for (String methodKey : thisClass.methods.keySet()) {
+            if (uniqueMethods.containsKey(methodKey)) {
+                uniqueMethods.replace(methodKey, thisClass.methods.get(methodKey));
+            } else {
+                uniqueMethods.put(methodKey, thisClass.methods.get(methodKey));
+            }
+        }
+        
+
+        return uniqueMethods.size();
+    }
+
+    public int getMethodOffset(classMap objectClass, String calledMethod) {
+        classMap thisClass = objectClass;
+        List<classMap> parentList = new ArrayList<classMap>();
+        LinkedHashMap<String, method> uniqueMethods;
+        classMap parentClass = null;
+        int index = 0;
+
+        // Initialize the counters for the registers and labels;
+        uniqueMethods = new LinkedHashMap<String, method>();
+
+        // Methods defined in parent classes
+        if (thisClass.parentClass != null) {
+            parentClass = thisClass.parentClass;
+        }
+        while (parentClass != null) {
+            parentList.add(parentClass);
+            if (parentClass.parentClass != null) {
+                parentClass = parentClass.parentClass;
+            } else {
+                parentClass = null;
+            }
+        }
+
+        // Loop for parent classes
+        for (int i = 0; i < parentList.size(); i++) {
+            // Loop for methods of parent class
+            for (String parentMethod : parentList.get(i).methods.keySet()) {
+                if (uniqueMethods.containsKey(parentMethod)) {
+                    uniqueMethods.replace(parentMethod, parentList.get(i).methods.get(parentMethod));
+                } else {
+                    uniqueMethods.put(parentMethod, parentList.get(i).methods.get(parentMethod));
+                }
+            }
+        }
+
+        for (String methodKey : thisClass.methods.keySet()) {
+            if (uniqueMethods.containsKey(methodKey)) {
+                uniqueMethods.replace(methodKey, thisClass.methods.get(methodKey));
+            } else {
+                uniqueMethods.put(methodKey, thisClass.methods.get(methodKey));
+            }
+        }
+        for (String methodKey : uniqueMethods.keySet()) {
+            if (methodKey == calledMethod) {
+                break;
+            }
+            index++;
+        }
+
+        return index;
+    }
+
+    public String loadVarToRegister(String name, String Type, method currMethod) {
+        classMap currClass = currMethod.belongsTo;
+        String fieldType = null;
+        int index = 0;
+        int offset = 0;
+        if (currMethod.definedVars.containsKey(name) || currMethod.formalParams.containsKey(name)) {
+
+            if (Type == "int[]") {
+                System.out.println("%_" + registerCounter + " = load i32*, i32** %" + name);
+            } else if (Type == "int") {
+                System.out.println("%_" + registerCounter + " = load i32, i32* %" + name);
+            } else if (Type == "boolean") {
+                System.out.println("%_" + registerCounter + " = load i1, i1* %" + name);
+            } else if (classes.containsKey(Type)) {
+                System.out.println("%_" + registerCounter + " = load i8*, i8** %" + name);
+            }
+        } else {
+            while (currClass != null) {
+                if (currClass.fields.containsKey(name)) {
+                    fieldType = currClass.fields.get(name).Type;
+                    for (String fieldKey : currClass.fields.keySet()) {
+                        if (fieldKey == name) {
+                            offset = currClass.fieldOffset[index];
+                            break;
+                        }
+                        index++;
+                    }
+
+                    break;
+                } else {
+                    currClass = currClass.parentClass;
+                }
+            }
+            if (fieldType == "int") {
+                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = load i32, i32* %_" + (registerCounter - 1));
+
+            } else if (fieldType == "int[]") {
+                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = load i32*, i32** %_" + (registerCounter - 1));
+            } else if (fieldType == "boolean") {
+                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = load i1, i1* %_" + (registerCounter - 1));
+            } else if (classes.containsKey(fieldType)) {
+                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = load i8*, i8** %_" + (registerCounter - 1));
+            }
+        }
+
         String result = " %_" + registerCounter;
         registerCounter++;
         return result;
+    }
+
+    public String storeExpression(String name, String Type, method currMethod, String expr) {
+        classMap currClass = currMethod.belongsTo;
+        String fieldType = null;
+        int index = 0;
+        int offset = 0;
+        if (currMethod.definedVars.containsKey(name) || currMethod.formalParams.containsKey(name)) {
+            if (Type == "int[]") {
+                System.out.println("store i32* " + expr + ", i32** %" + name);
+            } else if (Type == "int") {
+                System.out.println("store i32 " + expr + ", i32* %" + name);
+            } else if (Type == "boolean") {
+                System.out.println("store i1 " + expr + ", i1* %" + name);
+            } else if (classes.containsKey(Type)) {
+                System.out.println("store i8* " + expr + ", i8** %" + name);
+            }
+        } else {
+            while (currClass != null) {
+                if (currClass.fields.containsKey(name)) {
+                    fieldType = currClass.fields.get(name).Type;
+                    for (String fieldKey : currClass.fields.keySet()) {
+                        if (fieldKey == name) {
+                            offset = currClass.fieldOffset[index];
+                            break;
+                        }
+                        index++;
+                    }
+
+                    break;
+                } else {
+                    currClass = currClass.parentClass;
+                }
+            }
+            if (fieldType == "int") {
+                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
+                System.out.println("store i32 " + expr + ", i32* %_" + registerCounter);
+            } else if (fieldType == "int[]") {
+                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
+                System.out.println("store i32* " + expr + ", i32** %_" + registerCounter);
+            } else if (fieldType == "boolean") {
+                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
+                System.out.println("store i1 " + expr + ", i1* %_" + registerCounter);
+            } else if (classes.containsKey(fieldType)) {
+                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                registerCounter++;
+                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
+                System.out.println("store i8* " + expr + ", i8** %_" + registerCounter);
+            }
+        }
+
+        registerCounter++;
+        return null;
     }
 
     public String isVar(String name, method currMethod) throws Exception {
         // Use this function, to retrieve a variable's or Object's type, given its name
         // and scope
         String type = null;
+        int index = 0;
         if ((name.equals("int") || name.equals("boolean") || name.equals("int[]") || name.equals("boolean[]")
                 || classes.containsKey(name))) {
             return name;
@@ -83,7 +345,6 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
      * f16 -> "}"
      * f17 -> "}"
      */
-
     public String visit(MainClass n, Object argu) throws Exception {
         classMap thisClass = classes.get(n.f1.accept(this, argu));
         List<classMap> parentList = new ArrayList<classMap>();
@@ -91,6 +352,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         classMap parentClass = null;
         String methodSubString;
         String methodString;
+        lastAlloc = null;
 
         // Initialize the counters for the registers and labels;
         registerCounter = 0;
@@ -160,10 +422,10 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                             methodSubString = methodSubString + ",i8*";
                         }
                     }
-                    methodSubString = methodSubString + ")* " + uniqueMethods.get(methodKey).belongsTo.Name + "."
+                    methodSubString = methodSubString + ")* @" + uniqueMethods.get(methodKey).belongsTo.Name + "."
                             + methodKey + " to i8*)";
                     if (methodString != "") {
-                        methodString = methodString + ", " + methodSubString;
+                        methodString = methodString + ", \n" + methodSubString;
                     } else {
                         methodString = methodSubString;
                     }
@@ -203,6 +465,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
      * f4 -> ( MethodDeclaration() )*
      * f5 -> "}"
      */
+    @Override
     public String visit(ClassDeclaration n, Object argu) throws Exception {
         String name = n.f1.accept(this, argu);
         classMap thisClass = classes.get(name);
@@ -220,6 +483,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
      * f6 -> ( MethodDeclaration() )*
      * f7 -> "}"
      */
+    @Override
     public String visit(ClassExtendsDeclaration n, Object argu) throws Exception {
         String name = n.f1.accept(this, argu);
         classMap thisClass = classes.get(name);
@@ -256,55 +520,105 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         return null;
     }
 
-    // /**
-    // * f0 -> "public"
-    // * f1 -> Type()
-    // * f2 -> Identifier()
-    // * f3 -> "("
-    // * f4 -> ( FormalParameterList() )?
-    // * f5 -> ")"
-    // * f6 -> "{"
-    // * f7 -> ( VarDeclaration() )*
-    // * f8 -> ( Statement() )*
-    // * f9 -> "return"
-    // * f10 -> Expression()
-    // * f11 -> ";"
-    // * f12 -> "}"
-    // */
-    // public String visit(MethodDeclaration n, Object argu) throws Exception {
-    // classMap thisClass = (classMap) argu;
-    // String type = n.f1.accept(this, argu);
-    // String name = n.f2.accept(this, argu);
-    // method thisMethod = thisClass.methods.get(name);
-    // String returnType = n.f10.accept(this, thisMethod);
-    // // Check method returns a known type
-    // if (!(returnType.equals("boolean") || returnType.equals("int") ||
-    // returnType.equals("boolean[]")
-    // || returnType.equals("int[]"))) {
-    // returnType = isVal(returnType, thisMethod);
-    // }
-    // // Check the returned value actually is of the same type
-    // if (!type.equals(returnType)) {
-    // throw new Exception("Exception: Return Type does not match returned value");
-    // }
+    /**
+     * f0 -> "public"
+     * f1 -> Type()
+     * f2 -> Identifier()
+     * f3 -> "("
+     * f4 -> ( FormalParameterList() )?
+     * f5 -> ")"
+     * f6 -> "{"
+     * f7 -> ( VarDeclaration() )*
+     * f8 -> ( Statement() )*
+     * f9 -> "return"
+     * f10 -> Expression()
+     * f11 -> ";"
+     * f12 -> "}"
+     */
+    @Override
+    public String visit(MethodDeclaration n, Object argu) throws Exception {
+        classMap thisClass = (classMap) argu;
+        String type = n.f1.accept(this, argu);
+        String name = n.f2.accept(this, argu);
+        String llvmType;
+        String defineString;
+        String defineSubString;
+        String parameterLoading = "";
+        String returnString;
+        if (type == "int") {
+            llvmType = "i32";
+        } else if (type == "boolean") {
+            llvmType = "i1";
+        } else if (type == "int[]") {
+            llvmType = "i32*";
+        } else if (type == "boolean[]") {
+            llvmType = "i1*";
+        } else {
+            llvmType = "i8*";
+        }
+        defineString = "define " + llvmType + " @" + thisClass.Name + "." + name + "(i8* %this";
+        for (String parameter : thisClass.methods.get(name).formalParams.keySet()) {
+            parameterLoading += " %" + parameter;
+            if (thisClass.methods.get(name).formalParams.get(parameter).Type == "int") {
+                defineSubString = ", i32";
+                parameterLoading += " = alloca i32\n";
+                parameterLoading += "store i32" + " %." + parameter + ", i32* %" + parameter + "\n";
+            } else if (thisClass.methods.get(name).formalParams.get(parameter).Type == "boolean") {
+                defineSubString = ", i1";
+                parameterLoading += " = alloca i1\n";
+                parameterLoading += "store i1" + " %." + parameter + ", i1* %" + parameter + "\n";
+            } else if (thisClass.methods.get(name).formalParams.get(parameter).Type == "int[]") {
+                defineSubString = ", i32*";
+                parameterLoading += " = alloca i32*\n";
+                parameterLoading += "store i32*" + " %." + parameter + ", i32** %" + parameter + "\n";
+            } else if (thisClass.methods.get(name).formalParams.get(parameter).Type == "boolean[]") {
+                defineSubString = ", i1*";
+                parameterLoading += " = alloca i1*\n";
+                parameterLoading += "store i1*" + " %." + parameter + ", i1** %" + parameter + "\n";
+            } else {
+                defineSubString = ", i8*";
+                parameterLoading += " = alloca i8*\n";
+                parameterLoading += "store i8*" + " %." + parameter + ", i8** %" + parameter + "\n";
+            }
+            defineSubString += " %." + parameter;
+            defineString += defineSubString;
 
-    // n.f8.accept(this, thisMethod);
-    // return null;
-    // }
+        }
+        defineString += "){";
+        System.out.println(defineString);
+        System.out.println(parameterLoading);
+        n.f8.accept(this, thisClass.methods.get(name));
+        if (thisClass.methods.get(name).Type == "int") {
+            defineSubString = "i32";
+        } else if (thisClass.methods.get(name).Type == "boolean") {
+            defineSubString = "i1";
+        } else if (thisClass.methods.get(name).Type == "int[]") {
+            defineSubString = "i32*";
+        } else if (thisClass.methods.get(name).Type == "boolean[]") {
+            defineSubString = "i1*";
+        } else {
+            defineSubString = "i8*";
+        }
+        returnString = n.f10.accept(this, thisClass.methods.get(name));
+        if (isVar(returnString, thisClass.methods.get(name)) != null) {
+            returnString = loadVarToRegister(returnString, thisClass.methods.get(name).Type,
+                    thisClass.methods.get(name));
+        }
+        System.out.println("ret " + defineSubString + " " + returnString);
+        System.out.println("}");
+        return null;
+    }
 
-    // /**
-    // * f0 -> "this"
-    // */
-    // public String visit(ThisExpression n, Object argu) throws Exception {
-    // // Get the type of the item referred to by 'this'
-    // if (argu.getClass() == method.class) {
-    // return ((method) argu).belongsTo.Name;
-    // } else if (argu.getClass() == classMap.class) {
-    // return ((classMap) argu).Name;
-    // } else {
-    // throw new Exception("Exception: Bad use of 'THIS'");
-    // }
-    // }
+    /**
+     * f0 -> "this"
+     */
+    @Override
+    public String visit(ThisExpression n, Object argu) throws Exception {
+        // Get the type of the item referred to by 'this'
+        method thisMethod = (method) argu;
+        lastAlloc = thisMethod.belongsTo.Name;
+        return "%this";
+    }
 
     /**
      * f0 -> Identifier()
@@ -326,7 +640,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         String exprReturn = n.f5.accept(this, argu);
 
         if (arrayType == "int[]") {
-            System.out.println("%_" + registerCounter + " = load i32*, i32** " + variableRegister.get(arrayName));
+            System.out.println("%_" + registerCounter + " = load i32*, i32** %" + arrayName);
             registerCounter++;
             System.out.println("%_" + registerCounter + " = load i32, i32* %_" + (registerCounter - 1));
             registerCounter++;
@@ -369,9 +683,9 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     public String visit(IfStatement n, Object argu) throws Exception {
         String ifCondtion = n.f2.accept(this, argu);
         int ifLabel = labelCounter;
-
+        method thisMethod = (method) argu;
         if (isVar(ifCondtion, (method) argu) != null) {
-            ifCondtion = loadVarToRegister(ifCondtion, "boolean");
+            ifCondtion = loadVarToRegister(ifCondtion, "boolean", thisMethod);
         }
 
         labelCounter++;
@@ -400,7 +714,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     public String visit(WhileStatement n, Object argu) throws Exception {
         int WhileExpressionLabel = labelCounter;
         labelCounter++;
-
+        method thisMethod = (method) argu;
         // Jump to the start of the loop
         System.out.println("br label %while_top_" + WhileExpressionLabel);
         System.out.println("while_top_" + WhileExpressionLabel + ":");
@@ -408,7 +722,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         // Create condition and jump based on result
         String loopCondtion = n.f2.accept(this, argu);
         if (isVar(loopCondtion, (method) argu) != null) {
-            loopCondtion = loadVarToRegister(loopCondtion, "boolean");
+            loopCondtion = loadVarToRegister(loopCondtion, "boolean", thisMethod);
         }
         System.out.println("br i1 " + loopCondtion + ", label %while_in_" + WhileExpressionLabel + ", label %while_out_"
                 + WhileExpressionLabel);
@@ -434,152 +748,171 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         String varName = n.f2.accept(this, argu);
         method thisMethod = (method) argu;
         if (isVar(varName, thisMethod) != null) {
-            varName = loadVarToRegister(varName, isVar(varName, thisMethod));
+            varName = loadVarToRegister(varName, isVar(varName, thisMethod), thisMethod);
         }
         System.out.println("call void (i32) @print_int(i32 " + varName + ")");
         registerCounter++;
         return null;
     }
 
-    // /**
-    // * f0 -> PrimaryExpression()
-    // * f1 -> "."
-    // * f2 -> Identifier()
-    // * f3 -> "("
-    // * f4 -> ( ExpressionList() )?
-    // * f5 -> ")"
-    // */
-    // @Override
-    // public String visit(MessageSend n, Object argu) throws Exception {
-    // String className = n.f0.accept(this, argu);
-    // method toCall = null;
+    /**
+     * f0 -> PrimaryExpression()
+     * f1 -> "."
+     * f2 -> Identifier()
+     * f3 -> "("
+     * f4 -> ( ExpressionList() )?
+     * f5 -> ")"
+     */
+    @Override
+    public String visit(MessageSend n, Object argu) throws Exception {
+        lastAlloc = null;
+        String className = n.f0.accept(this, argu);
+        String classType;
 
-    // // Check that the object or class the method is called on, actually exists
-    // if ((!classes.containsKey(className)) && (!(((method)
-    // argu).formalParams.containsKey(className)
-    // || ((method) argu).definedVars.containsKey(className)))) {
-    // if (!((method) argu).belongsTo.fields.containsKey(className)) {
-    // if (((method) argu).belongsTo.parentClass != null) {
-    // if (!((method) argu).belongsTo.parentClass.fields.containsKey(className)) {
-    // throw new Exception("Exception: No such class or variable");
-    // }
-    // } else {
-    // throw new Exception("Exception: No such class or variable");
-    // }
-    // }
-    // }
+        String methodName = n.f2.accept(this, argu);
+        method thisMethod = (method) argu;
+        method methodObject = null;
+        String arguments = "";
+        String type = "";
+        if (isVar(className, thisMethod) != null) {
+            classType = isVar(className, thisMethod);
+            className = loadVarToRegister(className, isVar(className, thisMethod), thisMethod);
+        } else {
+            classType = lastAlloc;
+        }
+        System.out.println("%_" + registerCounter + " = bitcast i8* " + className + " to i8***");
+        registerCounter++;
 
-    // // If the method is inherited, set the className to be the one of the parent
-    // // class for future reference
-    // if (argu != null && !classes.containsKey(className)) {
-    // if (((method) argu).formalParams.containsKey(className)) {
-    // className = ((method) argu).formalParams.get(className).Type;
-    // } else if (((method) argu).definedVars.containsKey(className)) {
-    // className = ((method) argu).definedVars.get(className).Type;
-    // } else if (((method) argu).belongsTo.fields.containsKey(className)) {
-    // className = ((method) argu).belongsTo.fields.get(className).Type;
-    // } else if (((method)
-    // argu).belongsTo.parentClass.fields.containsKey(className)) {
-    // className = ((method) argu).belongsTo.parentClass.fields.get(className).Type;
-    // }
-    // }
+        System.out.println("%_" + registerCounter + " = load i8**, i8*** %_" + (registerCounter - 1));
+        registerCounter++;
 
-    // // Check the method belongs to the class
-    // String funcName = n.f2.accept(this, argu);
-    // if (classes.get(className).methods.containsKey(funcName)) {
-    // toCall = classes.get(className).methods.get(funcName);
-    // } else if (classes.get(className).parentClass != null) {
-    // while (classes.get(className).parentClass != null) {
-    // if (classes.get(className).parentClass.methods.containsKey(funcName)) {
-    // toCall = classes.get(className).parentClass.methods.get(funcName);
-    // break;
-    // } else {
-    // className = classes.get(className).parentClass.Name;
-    // }
-    // }
-    // if (toCall == null) {
-    // throw new Exception("Exception: No such method");
-    // }
+        System.out.println("%_" + registerCounter + " = getelementptr i8*, i8** %_" + (registerCounter - 1) + ", i32 "
+                + getMethodOffset(classes.get(classType), methodName));
+        registerCounter++;
 
-    // } else {
-    // System.out.println(className + " " + funcName);
-    // throw new Exception("Exception: No such method");
-    // }
+        System.out.println("%_" + registerCounter + " = load i8*, i8** %_" + (registerCounter - 1));
+        registerCounter++;
 
-    // // Check that the arguments and the formal parameters match
-    // // First get both, and compare their size
-    // String typeString = "" + n.f4.accept(this, argu);
-    // if (typeString.length() == 0 && !toCall.formalParams.isEmpty()) {
-    // throw new Exception("Exception: Arguments do not match");
-    // }
-    // String[] parts = typeString.split(",");
-    // if (parts.length != toCall.formalParams.size() &&
-    // !toCall.formalParams.isEmpty()) {
-    // throw new Exception("Exception: Arguments do not match");
-    // }
+        methodObject = getMethod(classes.get(classType), methodName);
+        if (methodObject.Type == "int[]") {
+            type = "i32*";
+        } else if (methodObject.Type == "int") {
+            type = "i32";
+        } else if (methodObject.Type == "boolean") {
+            type = "i1";
+        } else if (methodObject.Type == "boolean[]") {
+            type = "i1*";
+        } else if (classes.containsKey(methodObject.Type)) {
+            type = "i8*";
+        }
+        for (String varKey : methodObject.formalParams.keySet()) {
+            if (methodObject.formalParams.get(varKey).Type == "int[]") {
+                arguments += " ,i32*";
+            } else if (methodObject.formalParams.get(varKey).Type == "int") {
+                arguments += " ,i32";
+            } else if (methodObject.formalParams.get(varKey).Type == "boolean") {
+                arguments += " ,i1";
+            } else if (methodObject.formalParams.get(varKey).Type == "boolean[]") {
+                arguments += " ,i1*";
+            } else if (classes.containsKey(methodObject.formalParams.get(varKey).Type)) {
+                arguments += " ,i8*";
+            }
+        }
 
-    // // If they are the same size, check the type of each argument in order
-    // List<variable> formalParams = new
-    // ArrayList<variable>(toCall.formalParams.values());
-    // for (int i = 0; i < formalParams.size(); i++) {
-    // if (!(formalParams.get(i).Type.equals(isVal(parts[i], ((method) argu))))) {
-    // if (classes.containsKey(formalParams.get(i).Type)) {
-    // if (classes.containsKey(isVal(parts[i], ((method) argu)))) {
-    // if (!classes.get(isVal(parts[i], ((method) argu))).parentClass.Name
-    // .equals(formalParams.get(i).Type)) {
-    // System.out.println(classes.get(isVal(parts[i], ((method)
-    // argu))).parentClass.Name + " "
-    // + formalParams.get(i).Type);
-    // if (!(classes.get(isVal(parts[i], ((method)
-    // argu))).parentClass.parentClass.Name
-    // .equals(formalParams.get(i).Type))) {
-    // throw new Exception("Exception: Arguments do not match");
-    // }
-    // }
-    // } else {
-    // throw new Exception("Exception: Arguments do not match");
-    // }
-    // } else {
-    // throw new Exception("Exception: Arguments do not match");
-    // }
-    // }
-    // }
-    // return toCall.Type;
-    // }
+        System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to " + type
+                + " (i8*" + arguments + ")*");
+        registerCounter++;
 
-    // /**
-    // * f0 -> Expression()
-    // * f1 -> ExpressionTail()
-    // */
-    // @Override
-    // public String visit(ExpressionList n, Object argu) throws Exception {
-    // String typeString = n.f0.accept(this, argu);
-    // if (n.f1 != null) {
-    // typeString += n.f1.accept(this, argu);
-    // }
-    // return typeString;
-    // }
+        System.out.println(
+                "%_" + registerCounter + " = call " + type + " %_" + (registerCounter - 1) + " (i8* " + className + " "
+                        + n.f4.accept(this, argu) + ")");
+        registerCounter++;
 
-    // /**
-    // * f0 -> ( ExpressionTerm() )*
-    // */
-    // @Override
-    // public String visit(ExpressionTail n, Object argu) throws Exception {
-    // String ret = "";
-    // for (Node node : n.f0.nodes) {
-    // ret += "," + node.accept(this, argu);
-    // }
-    // return ret;
-    // }
+        return "%_" + (registerCounter - 1);
+    }
 
-    // /**
-    // * f0 -> ","
-    // * f1 -> Expression()
-    // */
-    // @Override
-    // public String visit(ExpressionTerm n, Object argu) throws Exception {
-    // return n.f1.accept(this, argu);
-    // }
+    /**
+     * f0 -> Expression()
+     * f1 -> ExpressionTail()
+     */
+    @Override
+    public String visit(ExpressionList n, Object argu) throws Exception {
+        String typeString = n.f0.accept(this, argu);
+        method thisMethod = (method) argu;
+        String type = isVar(typeString, thisMethod);
+        if (type != null) {
+            if (type == "int[]") {
+                type = "i32*";
+            } else if (type == "int") {
+                type = "i32";
+            } else if (type == "boolean") {
+                type = "i1";
+            } else if (type == "boolean[]") {
+                type = "i1*";
+            } else if (classes.containsKey(type)) {
+                type = "i8*";
+            }
+            typeString = type + " " + loadVarToRegister(typeString, type, thisMethod);
+        } else {
+            if (typeString == "true") {
+                typeString = "i1 1";
+            } else if (typeString == "false") {
+                typeString = "i1 0";
+            } else {
+                typeString = "i32 " + typeString;
+            }
+        }
+        if (n.f1 != null) {
+            typeString += n.f1.accept(this, argu);
+        }
+        return "," + typeString;
+    }
+
+    /**
+     * f0 -> ( ExpressionTerm() )*
+     */
+    @Override
+    public String visit(ExpressionTail n, Object argu) throws Exception {
+        String ret = "";
+        for (Node node : n.f0.nodes) {
+            ret += "," + node.accept(this, argu);
+        }
+        return ret;
+    }
+
+    /**
+     * f0 -> ","
+     * f1 -> Expression()
+     */
+    @Override
+    public String visit(ExpressionTerm n, Object argu) throws Exception {
+        String termResult = n.f1.accept(this, argu);
+        method thisMethod = (method) argu;
+        String type = isVar(termResult, thisMethod);
+        if (type != null) {
+            if (type == "int[]") {
+                type = "i32*";
+            } else if (type == "int") {
+                type = "i32";
+            } else if (type == "boolean") {
+                type = "i1";
+            } else if (type == "boolean[]") {
+                type = "i1*";
+            } else if (classes.containsKey(type)) {
+                type = "i8*";
+            }
+            termResult = type + " " + loadVarToRegister(termResult, type, thisMethod);
+        } else {
+            if (termResult == "true") {
+                termResult = "%1 1";
+            } else if (termResult == "false") {
+                termResult = "%1 0";
+            } else {
+                termResult = "%32 " + termResult;
+            }
+        }
+        return termResult;
+    }
 
     /**
      * f0 -> Clause()
@@ -590,10 +923,11 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     public String visit(AndExpression n, Object argu) throws Exception {
         String clause1 = n.f0.accept(this, argu);
         String secondClause = null;
+        method thisMethod = (method) argu;
         int AndExpressionLabel = labelCounter;
         labelCounter++;
         if (isVar(clause1, (method) argu) != null) {
-            clause1 = loadVarToRegister(clause1, "boolean");
+            clause1 = loadVarToRegister(clause1, "boolean", thisMethod);
         }
         System.out.println("br i1 " + clause1 + ", label %exp_res_1_" + AndExpressionLabel + ", label %exp_res_0_"
                 + AndExpressionLabel);
@@ -606,7 +940,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         System.out.println("exp_res_1_" + AndExpressionLabel + ":");
         String clause2 = n.f2.accept(this, argu);
         if (isVar(clause2, (method) argu) != null) {
-            clause2 = loadVarToRegister(clause2, "boolean");
+            clause2 = loadVarToRegister(clause2, "boolean", thisMethod);
         }
         secondClause = clause2;
         System.out.println("br label %exp_res_2_" + AndExpressionLabel);
@@ -636,14 +970,15 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         String type2 = isVar(name2, (method) argu);
         String register1;
         String register2;
+        method thisMethod = (method) argu;
 
         if (type1 != null) {
-            register1 = loadVarToRegister(name1, type1);
+            register1 = loadVarToRegister(name1, type1, thisMethod);
         } else {
             register1 = name1;
         }
         if (type2 != null) {
-            register2 = loadVarToRegister(name2, type2);
+            register2 = loadVarToRegister(name2, type2, thisMethod);
         } else {
             register2 = name2;
         }
@@ -665,14 +1000,15 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         String type2 = isVar(name2, (method) argu);
         String register1;
         String register2;
+        method thisMethod = (method) argu;
 
         if (type1 != null) {
-            register1 = loadVarToRegister(name1, type1);
+            register1 = loadVarToRegister(name1, type1, thisMethod);
         } else {
             register1 = name1;
         }
         if (type2 != null) {
-            register2 = loadVarToRegister(name2, type2);
+            register2 = loadVarToRegister(name2, type2, thisMethod);
         } else {
             register2 = name2;
         }
@@ -694,14 +1030,15 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         String type2 = isVar(name2, (method) argu);
         String register1;
         String register2;
+        method thisMethod = (method) argu;
 
         if (type1 != null) {
-            register1 = loadVarToRegister(name1, type1);
+            register1 = loadVarToRegister(name1, type1, thisMethod);
         } else {
             register1 = name1;
         }
         if (type2 != null) {
-            register2 = loadVarToRegister(name2, type2);
+            register2 = loadVarToRegister(name2, type2, thisMethod);
         } else {
             register2 = name2;
         }
@@ -724,13 +1061,15 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         String indexType = isVar(indexName, (method) argu);
         String arrayRegister;
         String indexRegister;
+        method thisMethod = (method) argu;
+
         if (arrayType != null) {
-            arrayRegister = loadVarToRegister(arrayName, arrayType);
+            arrayRegister = loadVarToRegister(arrayName, arrayType, thisMethod);
         } else {
             arrayRegister = arrayName;
         }
         if (indexType != null) {
-            indexRegister = loadVarToRegister(indexName, indexType);
+            indexRegister = loadVarToRegister(indexName, indexType, thisMethod);
         } else {
             indexRegister = indexName;
         }
@@ -778,14 +1117,15 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         String type2 = isVar(name2, (method) argu);
         String register1;
         String register2;
+        method thisMethod = (method) argu;
 
         if (type1 != null) {
-            register1 = loadVarToRegister(name1, type1);
+            register1 = loadVarToRegister(name1, type1, thisMethod);
         } else {
             register1 = name1;
         }
         if (type2 != null) {
-            register2 = loadVarToRegister(name2, type2);
+            register2 = loadVarToRegister(name2, type2, thisMethod);
         } else {
             register2 = name2;
         }
@@ -804,8 +1144,10 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         String arrayName = n.f0.accept(this, argu);
         String arrayType = isVar(arrayName, (method) argu);
         String arrayRegister;
+        method thisMethod = (method) argu;
+
         if (arrayType != null) {
-            arrayRegister = loadVarToRegister(arrayName, arrayType);
+            arrayRegister = loadVarToRegister(arrayName, arrayType, thisMethod);
         } else {
             arrayRegister = arrayName;
         }
@@ -817,22 +1159,6 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         return "%_" + (registerCounter - 1);
     }
 
-    // /**
-    // * f0 -> IntegerLiteral()
-    // * | TrueLiteral()
-    // * | FalseLiteral()
-    // * | Identifier()
-    // * | ThisExpression()
-    // * | ArrayAllocationExpression()
-    // * | AllocationExpression()
-    // * | BracketExpression()
-    // */
-    // @Override
-    // public String visit(PrimaryExpression n, Object argu) throws Exception {
-    // String type = n.f0.accept(this, argu);
-    // return type;
-    // }
-
     /**
      * f0 -> Identifier()
      * f1 -> "="
@@ -842,67 +1168,14 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     public String visit(AssignmentStatement n, Object argu) throws Exception {
         method thisMethod = (method) argu;
         String identifier = n.f0.accept(this, argu);
-        String register = variableRegister.get(identifier);
-        String type = thisMethod.definedVars.get(identifier).Type;
-        // Check for class fields here
+        String type = isVar(identifier, thisMethod);
+
+        // Func to get store address
         String expressionResult = n.f2.accept(this, argu);
-
-        // 2. Check type of identifier
-        if (type == "int") {
-            if (thisMethod.definedVars.containsKey(expressionResult)
-                    || thisMethod.formalParams.containsKey(expressionResult)) {
-                System.out.println(
-                        "%_" + registerCounter + " = load i32, i32* " + variableRegister.get(expressionResult));
-                registerCounter++;
-            }
-            // If the expresion is an integer literal
-            if (expressionResult.chars().allMatch(Character::isDigit)) {
-                System.out.println("store i32 " + expressionResult + ", i32* " + register);
-            } else {
-                // If the expresion is an integer variable
-                System.out.println("store i32 %_" + (registerCounter - 1) + ", i32* " + register);
-            }
-        } else if (type == "boolean") {
-            if (thisMethod.definedVars.containsKey(expressionResult)
-                    || thisMethod.formalParams.containsKey(expressionResult)) {
-                System.out
-                        .println("%_" + registerCounter + " = load i1, i1* " + variableRegister.get(expressionResult));
-                registerCounter++;
-            }
-            if (expressionResult == "true") {
-                System.out.println("store i1 1, i1* " + register);
-            } else if (expressionResult == "false") {
-                System.out.println("store i1 0, i1* " + register);
-            } else {
-                // If the expresion is an boolean variable
-                System.out.println("store i1 %_" + (registerCounter - 1) + ", i1* " + register);
-            }
-        } else if (type == "int[]") {
-            if (thisMethod.definedVars.containsKey(expressionResult)
-                    || thisMethod.formalParams.containsKey(expressionResult)) {
-                System.out.println(
-                        "%_" + registerCounter + " = load i32*, i32** " + variableRegister.get(expressionResult));
-                registerCounter++;
-            }
-            System.out.println("store i32* %_" + (registerCounter - 1) + ", i32** " + register);
-        } else if (type == "boolean[]") {
-            if (thisMethod.definedVars.containsKey(expressionResult)
-                    || thisMethod.formalParams.containsKey(expressionResult)) {
-                System.out.println(
-                        "%_" + registerCounter + " = load i1*, i1** " + variableRegister.get(expressionResult));
-                registerCounter++;
-            }
-            System.out.println("store i1* %_" + (registerCounter - 1) + ", i1** " + register);
-        } else {
-            if (thisMethod.definedVars.containsKey(expressionResult)
-                    || thisMethod.formalParams.containsKey(expressionResult)) {
-                System.out.println(
-                        "%_" + registerCounter + " = load i8*, i8** " + variableRegister.get(expressionResult));
-                registerCounter++;
-            }
-            System.out.println("store i8* %_" + (registerCounter - 1) + ", i8** " + register);
+        if (isVar(expressionResult, thisMethod) != null) {
+            expressionResult = loadVarToRegister(expressionResult, type, thisMethod);
         }
-
+        storeExpression(identifier, type, thisMethod, expressionResult);
         return null;
     }
 
@@ -954,7 +1227,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         String arraySize = n.f3.accept(this, argu);
         method thisMethod = (method) argu;
         if (isVar(arraySize, thisMethod) != null) {
-            arraySize = loadVarToRegister(arraySize, "int");
+            arraySize = loadVarToRegister(arraySize, "int", thisMethod);
         }
         System.out.println("%_" + registerCounter + " = add i32 1, " + arraySize);
         registerCounter++;
@@ -989,9 +1262,10 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(AllocationExpression n, Object argu) throws Exception {
-        List<variable> variableList = null; // new ArrayList<variable>(map.values());
+        List<variable> variableList = null;
         classMap parentClass = null;
         String type = n.f1.accept(this, argu);
+        lastAlloc = type;
         int fieldOffset = 0;
         parentClass = classes.get(type).parentClass;
         if (classes.get(type).fieldOffset.length == 0) {
@@ -1021,19 +1295,19 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                 fieldOffset += 8;
             }
         }
-        System.out.println("%_" + registerCounter + " = call i8* @calloc(i32 1, i32 " + fieldOffset + 8 + ")");
+        System.out.println("%_" + registerCounter + " = call i8* @calloc(i32 1, i32 " + (fieldOffset + 8) + ")");
         registerCounter++;
 
         System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8***");
         registerCounter++;
 
         System.out.println(
-                "%_" + registerCounter + " = getelementptr [2 x i8*], [2 x i8*]* @." + type + "_vtable, i32 0, i32 0");
+                "%_" + registerCounter + " = getelementptr ["+getVtableSize(classes.get(type))+" x i8*], ["+getVtableSize(classes.get(type))+" x i8*]* @." + type + "_vtable, i32 0, i32 0");
         registerCounter++;
 
         System.out.println("store i8** %_" + (registerCounter - 1) + ", i8*** %_" + (registerCounter - 2));
 
-        return type;
+        return "%_" + (registerCounter - 3);
     }
 
     /**
@@ -1054,12 +1328,13 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(NotExpression n, Object argu) throws Exception {
         String clause = n.f1.accept(this, argu);
+        method thisMethod = (method) argu;
         if (isVar(clause, (method) argu) != null) {
-            clause = loadVarToRegister(clause, "boolean");
+            clause = loadVarToRegister(clause, "boolean", thisMethod);
         }
         System.out.println("%_" + registerCounter + " = xor i1 1, " + clause);
         registerCounter++;
-        return "%_"+(registerCounter-1);
+        return "%_" + (registerCounter - 1);
     }
 
     @Override
