@@ -13,7 +13,52 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     public int labelCounter;
     public String lastAlloc;
     method methodObject = null;
+    public String codeCollection = "";
 
+    // This function will convert boolean literals or boolean expressions for
+    // storage in the bool array
+    public String convertBool(String givenEXPR) {
+        if (givenEXPR.equals("true")) {
+            return "" + 1;
+        } else if (givenEXPR.equals("false")) {
+            return "" + 0;
+        } else {
+            addLine("\t" + "%_" + registerCounter + " = zext i1 " + givenEXPR + " to i32");
+            registerCounter++;
+            return "%_" + (registerCounter - 1);
+        }
+    }
+
+    // This function gets the type of the argument based on its index
+    public String getMethodArgumentType(method thisMethod, int argument) {
+        int index = 0;
+        String parameterType = "";
+        for (String parameter : thisMethod.formalParams.keySet()) {
+            if (index == argument) {
+                parameterType = thisMethod.formalParams.get(parameter).Type;
+                if (parameterType == "int[]") {
+                    parameterType = "i32*";
+                } else if (parameterType == "int") {
+                    parameterType = "i32";
+                } else if (parameterType == "boolean") {
+                    parameterType = "i1";
+                } else if (classes.containsKey(parameterType)) {
+                    parameterType = "i8*";
+                }
+                break;
+            }
+            index++;
+        }
+
+        return parameterType;
+    }
+
+    // Accumulate the code line by line
+    public void addLine(String lineOfCode) {
+        codeCollection += "\n" + lineOfCode;
+    }
+
+    // Return the method object, depending on the scope the call was made in
     public method getMethod(classMap objectClass, String calledMethod) {
         classMap thisClass = objectClass;
         List<classMap> parentList = new ArrayList<classMap>();
@@ -64,6 +109,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         return methodObject;
     }
 
+    // Get the size of the V-Table of the class
     public int getVtableSize(classMap objectClass) {
         classMap thisClass = objectClass;
         List<classMap> parentList = new ArrayList<classMap>();
@@ -110,6 +156,8 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         return uniqueMethods.size();
     }
 
+    // Get the offset of the method on the V-Table, depending on the scope the call
+    // was made in
     public int getMethodOffset(classMap objectClass, String calledMethod) {
         classMap thisClass = objectClass;
         List<classMap> parentList = new ArrayList<classMap>();
@@ -162,6 +210,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         return index;
     }
 
+    // Returns the result of loading the given field or variable
     public String loadVarToRegister(String name, String Type, method currMethod) {
         classMap currClass = currMethod.belongsTo;
         String fieldType = null;
@@ -169,13 +218,15 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         int offset = 0;
         if (currMethod.definedVars.containsKey(name) || currMethod.formalParams.containsKey(name)) {
             if (Type == "int[]") {
-                System.out.println("%_" + registerCounter + " = load i32*, i32** %" + name);
+                addLine("\t" + "%_" + registerCounter + " = load i32*, i32** %" + name);
+            } else if (Type == "boolean[]") {
+                addLine("\t" + "%_" + registerCounter + " = load i32*, i32** %" + name);
             } else if (Type == "int") {
-                System.out.println("%_" + registerCounter + " = load i32, i32* %" + name);
+                addLine("\t" + "%_" + registerCounter + " = load i32, i32* %" + name);
             } else if (Type == "boolean") {
-                System.out.println("%_" + registerCounter + " = load i1, i1* %" + name);
+                addLine("\t" + "%_" + registerCounter + " = load i1, i1* %" + name);
             } else if (classes.containsKey(Type)) {
-                System.out.println("%_" + registerCounter + " = load i8*, i8** %" + name);
+                addLine("\t" + "%_" + registerCounter + " = load i8*, i8** %" + name);
             }
         } else {
             while (currClass != null) {
@@ -195,30 +246,36 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                 }
             }
             if (fieldType == "int") {
-                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
+                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = load i32, i32* %_" + (registerCounter - 1));
+                addLine("\t" + "%_" + registerCounter + " = load i32, i32* %_" + (registerCounter - 1));
 
             } else if (fieldType == "int[]") {
-                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
+                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = load i32*, i32** %_" + (registerCounter - 1));
+                addLine("\t" + "%_" + registerCounter + " = load i32*, i32** %_" + (registerCounter - 1));
+            } else if (fieldType == "boolean[]") {
+                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                registerCounter++;
+                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
+                registerCounter++;
+                addLine("\t" + "%_" + registerCounter + " = load i32*, i32** %_" + (registerCounter - 1));
             } else if (fieldType == "boolean") {
-                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
+                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = load i1, i1* %_" + (registerCounter - 1));
+                addLine("\t" + "%_" + registerCounter + " = load i1, i1* %_" + (registerCounter - 1));
             } else if (classes.containsKey(fieldType)) {
-                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
+                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = load i8*, i8** %_" + (registerCounter - 1));
+                addLine("\t" + "%_" + registerCounter + " = load i8*, i8** %_" + (registerCounter - 1));
             }
         }
 
@@ -227,6 +284,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         return result;
     }
 
+    // Stores the given expression to the given field or variable
     public String storeExpression(String name, String Type, method currMethod, String expr) {
         classMap currClass = currMethod.belongsTo;
         String fieldType = null;
@@ -234,13 +292,15 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         int offset = 0;
         if (currMethod.definedVars.containsKey(name) || currMethod.formalParams.containsKey(name)) {
             if (Type == "int[]") {
-                System.out.println("store i32* " + expr + ", i32** %" + name);
+                addLine("\t" + "store i32* " + expr + ", i32** %" + name);
+            } else if (Type == "boolean[]") {
+                addLine("\t" + "store i32* " + expr + ", i32** %" + name);
             } else if (Type == "int") {
-                System.out.println("store i32 " + expr + ", i32* %" + name);
+                addLine("\t" + "store i32 " + expr + ", i32* %" + name);
             } else if (Type == "boolean") {
-                System.out.println("store i1 " + expr + ", i1* %" + name);
+                addLine("\t" + "store i1 " + expr + ", i1* %" + name);
             } else if (classes.containsKey(Type)) {
-                System.out.println("store i8* " + expr + ", i8** %" + name);
+                addLine("\t" + "store i8* " + expr + ", i8** %" + name);
             }
         } else {
             while (currClass != null) {
@@ -253,32 +313,31 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                         }
                         index++;
                     }
-
                     break;
                 } else {
                     currClass = currClass.parentClass;
                 }
             }
             if (fieldType == "int") {
-                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
-                System.out.println("store i32 " + expr + ", i32* %_" + registerCounter);
+                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
+                addLine("\t" + "store i32 " + expr + ", i32* %_" + registerCounter);
             } else if (fieldType == "int[]") {
-                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
-                System.out.println("store i32* " + expr + ", i32** %_" + registerCounter);
+                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
+                addLine("\t" + "store i32* " + expr + ", i32** %_" + registerCounter);
             } else if (fieldType == "boolean") {
-                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
-                System.out.println("store i1 " + expr + ", i1* %_" + registerCounter);
+                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
+                addLine("\t" + "store i1 " + expr + ", i1* %_" + registerCounter);
             } else if (classes.containsKey(fieldType)) {
-                System.out.println("%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
-                System.out.println("store i8* " + expr + ", i8** %_" + registerCounter);
+                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
+                addLine("\t" + "store i8* " + expr + ", i8** %_" + registerCounter);
             }
         }
 
@@ -286,11 +345,10 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         return null;
     }
 
+    // Returns the type of the variable or field signified by name
+    // Returns null if the name is not a field or variable
     public String isVar(String name, method currMethod) throws Exception {
-        // Use this function, to retrieve a variable's or Object's type, given its name
-        // and scope
         String type = null;
-        int index = 0;
         if ((name.equals("int") || name.equals("boolean") || name.equals("int[]") || name.equals("boolean[]")
                 || classes.containsKey(name))) {
             return name;
@@ -356,9 +414,8 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         registerCounter = 0;
         labelCounter = 0;
         variableRegister = new LinkedHashMap<String, String>();
-        System.out.println("\n------------------LLVM TEST------------------\n");
 
-        // Loop for each class
+        // Loop for each class, create the V-Tables
         for (String key : classes.keySet()) {
 
             // Create the map to hold the inherited methods
@@ -428,30 +485,31 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                         methodString = methodSubString;
                     }
                 }
-                System.out.println("@." + key + "_vtable = global ["
+                addLine("@." + key + "_vtable = global ["
                         + String.valueOf(uniqueMethods.size()) + " x i8*][" + methodString + "]");
 
             }
         }
-        System.out.println("@." + thisClass.Name + "_vtable = global [0 x i8*] []");
-        System.out.println("declare i8* @calloc(i32, i32)\ndeclare i32 @printf(i8*, ...)\ndeclare void @exit(i32)");
-        System.out.println(
+        // Define some usefull functions
+        addLine("@." + thisClass.Name + "_vtable = global [0 x i8*] []");
+        addLine("declare i8* @calloc(i32, i32)\ndeclare i32 @printf(i8*, ...)\ndeclare void @exit(i32)");
+        addLine(
                 "\n@_cint = constant [4 x i8] c\"%d\\0a\\00\"\n@_cOOB = constant [15 x i8] c\"Out of bounds\\0a\\00\"");
-        System.out.println(
+        addLine(
                 "\n@_cNSZ = constant [15 x i8] c\"Negative size\\0a\\00\"");
-        System.out.println(
+        addLine(
                 "define void @print_int(i32 %i) {\n %_str = bitcast [4 x i8]* @_cint to i8*\n call i32 (i8*, ...) @printf(i8* %_str, i32 %i)\n ret void\n}\n");
-        System.out.println(
+        addLine(
                 "define void @throw_oob() {\n%_str = bitcast [15 x i8]* @_cOOB to i8*\ncall i32 (i8*, ...) @printf(i8* %_str)\ncall void @exit(i32 1)\nret void\n}\n");
-        System.out.println(
+        addLine(
                 "define void @throw_nsz() {\n%_str = bitcast [15 x i8]* @_cNSZ to i8*\ncall i32 (i8*, ...) @printf(i8* %_str)\ncall void @exit(i32 1)\nret void\n}\n");
-        System.out.println("define i32 @main() {");
+        addLine("define i32 @main() {");
 
-        // Created all V-tables, now start working on the main
+        // Created all V-tables, now start working on the main function
         n.f14.accept(this, thisClass.methods.get("main"));
         n.f15.accept(this, thisClass.methods.get("main"));
-        System.out.println("ret i32 0");
-        System.out.println("}");
+        addLine("\t" + "ret i32 0");
+        addLine("}\n");
         return null;
     }
 
@@ -498,22 +556,25 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     public String visit(VarDeclaration n, Object argu) throws Exception {
         method thisMethod = (method) argu;
         String varName = n.f1.accept(this, null);
+        // Get the type of the variable
         String type = thisMethod.definedVars.get(varName).Type;
+        // Allocate space on the register of the variable
         String alloca = "%" + varName + " = alloca";
 
+        // Combine the above
         if (type == "int") {
             alloca = alloca + " i32";
         } else if (type == "boolean") {
             alloca = alloca + " i1";
         } else if (type == "boolean[]") {
-            alloca = alloca + " i1*";
+            alloca = alloca + " i32*";
         } else if (type == "int[]") {
             alloca = alloca + " i32*";
         } else {
             alloca = alloca + " i8*";
         }
         variableRegister.put(varName, "%" + varName);
-        System.out.println(alloca);
+        addLine("\t" + alloca);
 
         return null;
     }
@@ -536,6 +597,8 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(MethodDeclaration n, Object argu) throws Exception {
         classMap thisClass = (classMap) argu;
+
+        // Get the type and name of the variable
         String type = n.f1.accept(this, argu);
         String name = n.f2.accept(this, argu);
         String llvmType;
@@ -554,39 +617,49 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         } else {
             llvmType = "i8*";
         }
+
+        // Define the method based on the name and type
         defineString = "define " + llvmType + " @" + thisClass.Name + "." + name + "(i8* %this";
+
+        // Add the formal parameters to the definition
         for (String parameter : thisClass.methods.get(name).formalParams.keySet()) {
-            parameterLoading += " %" + parameter;
+            parameterLoading += "%" + parameter;
             if (thisClass.methods.get(name).formalParams.get(parameter).Type == "int") {
                 defineSubString = ", i32";
                 parameterLoading += " = alloca i32\n";
-                parameterLoading += "store i32" + " %." + parameter + ", i32* %" + parameter + "\n";
+                parameterLoading += "\tstore i32" + " %." + parameter + ", i32* %" + parameter + "\n";
             } else if (thisClass.methods.get(name).formalParams.get(parameter).Type == "boolean") {
                 defineSubString = ", i1";
                 parameterLoading += " = alloca i1\n";
-                parameterLoading += "store i1" + " %." + parameter + ", i1* %" + parameter + "\n";
+                parameterLoading += "\tstore i1" + " %." + parameter + ", i1* %" + parameter + "\n";
             } else if (thisClass.methods.get(name).formalParams.get(parameter).Type == "int[]") {
                 defineSubString = ", i32*";
                 parameterLoading += " = alloca i32*\n";
-                parameterLoading += "store i32*" + " %." + parameter + ", i32** %" + parameter + "\n";
+                parameterLoading += "\tstore i32*" + " %." + parameter + ", i32** %" + parameter + "\n";
             } else if (thisClass.methods.get(name).formalParams.get(parameter).Type == "boolean[]") {
                 defineSubString = ", i1*";
                 parameterLoading += " = alloca i1*\n";
-                parameterLoading += "store i1*" + " %." + parameter + ", i1** %" + parameter + "\n";
+                parameterLoading += "\tstore i1*" + " %." + parameter + ", i1** %" + parameter + "\n";
             } else {
                 defineSubString = ", i8*";
                 parameterLoading += " = alloca i8*\n";
-                parameterLoading += "store i8*" + " %." + parameter + ", i8** %" + parameter + "\n";
+                parameterLoading += "\tstore i8*" + " %." + parameter + ", i8** %" + parameter + "\n";
             }
             defineSubString += " %." + parameter;
             defineString += defineSubString;
 
         }
         defineString += "){";
-        System.out.println(defineString);
-        System.out.println(parameterLoading);
+        addLine(defineString);
+        if (!parameterLoading.equals("")) {
+            addLine("\t" + parameterLoading);
+        }
+
+        // Work on the variables and statements
         n.f7.accept(this, thisClass.methods.get(name));
         n.f8.accept(this, thisClass.methods.get(name));
+
+        // Prepare return type
         if (thisClass.methods.get(name).Type == "int") {
             defineSubString = "i32";
         } else if (thisClass.methods.get(name).Type == "boolean") {
@@ -603,8 +676,8 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
             returnString = loadVarToRegister(returnString, thisClass.methods.get(name).Type,
                     thisClass.methods.get(name));
         }
-        System.out.println("ret " + defineSubString + " " + returnString);
-        System.out.println("}");
+        addLine("\n\tret " + defineSubString + " " + returnString);
+        addLine("\t" + "}\n");
         return null;
     }
 
@@ -632,48 +705,58 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         method thisMethod = (method) argu;
         String arrayName = n.f0.accept(this, argu);
         String arrayType = isVar(arrayName, (method) argu);
+        String exprType;
+        String arrayReg;
         arrayType = isVar(arrayType, (method) argu);
         if (arrayType != null) {
             arrayName = loadVarToRegister(arrayName, arrayType, thisMethod);
         }
-       
-        // Get the index and calculate the expression
 
+        // Get the index and calculate the expression
         String arrayIndex = n.f2.accept(this, argu);
         String indexType = isVar(arrayIndex, (method) argu);
         if (indexType != null) {
             arrayIndex = loadVarToRegister(arrayIndex, indexType, thisMethod);
         }
         String exprReturn = n.f5.accept(this, argu);
-
-        if (arrayType == "int[]") {
-           
-            System.out.println("%_" + registerCounter + " = load i32, i32* " + arrayName);
-            registerCounter++;
-            System.out.println("%_" + registerCounter + " = icmp sge i32 0, " + arrayIndex);
-            registerCounter++;
-            System.out.println("%_" + registerCounter + " = icmp slt i32 0, %_" + (registerCounter - 2));
-            registerCounter++;
-            System.out.println(
-                    "%_" + registerCounter + " = and i1 %_" + (registerCounter - 2) + ", %_" + (registerCounter - 1));
-            registerCounter++;
-            System.out.println("br i1 %_"+(registerCounter-1)+", label %oob_err_" + labelCounter + ", label %oob_ok_" + labelCounter);
-            System.out.println("oob_err_" + labelCounter + ":");
-            System.out.println("call void @throw_oob()");
-            System.out.println("br label %oob_ok_" + labelCounter);
-            System.out.println("oob_ok_" + labelCounter + ":");
-
-            System.out.println("%_" + registerCounter + " = add i32 1, " + arrayIndex);
-            registerCounter++;
-            System.out.println("%_" + registerCounter + " = getelementptr i32, i32* " + arrayName
-                    + ", i32 %_" + (registerCounter - 1));
-            registerCounter++;
-            System.out.println("store i32 " + exprReturn + ", i32* %_" + (registerCounter - 1));//
-            labelCounter++;
-        } else {
-            // To do, use this https://piazza.com/class/kzyd8bi9p0ihq?cid=86 ?
+        exprType = isVar(exprReturn, (method) argu);
+        if (exprType != null) {
+            exprReturn = loadVarToRegister(exprReturn, exprType, thisMethod);
         }
 
+        addLine("\t" + "%_" + registerCounter + " = load i32, i32* " + arrayName);
+        registerCounter++;
+        addLine("\t" + "%_" + registerCounter + " = icmp sge i32 " + arrayIndex + ", 0");
+        registerCounter++;
+        addLine("\t" + "%_" + registerCounter + " = icmp slt i32 " + arrayIndex + ", %_" + (registerCounter - 2));
+        registerCounter++;
+        addLine("\t" +
+                "%_" + registerCounter + " = and i1 %_" + (registerCounter - 2) + ", %_" + (registerCounter - 1));
+        registerCounter++;
+        addLine("\t" + "br i1 %_" + (registerCounter - 1) + ", label %oob_ok_" + labelCounter + ", label %oob_err_"
+                + labelCounter);
+        addLine("\t" + "\noob_err_" + labelCounter + ":");
+        addLine("\t" + "call void @throw_oob()");
+        addLine("\t" + "br label %oob_ok_" + labelCounter);
+        addLine("\t" + "\noob_ok_" + labelCounter + ":");
+
+        addLine("\t" + "%_" + registerCounter + " = add i32 1, " + arrayIndex);
+        registerCounter++;
+        addLine("\t" + "%_" + registerCounter + " = getelementptr i32, i32* " + arrayName
+                + ", i32 %_" + (registerCounter - 1));
+
+        // Convert the i1 values to i32 if we store to a bool array
+        if (arrayType == "boolean[]") {
+            arrayReg = "%_" + registerCounter;
+            registerCounter++;
+            exprReturn = convertBool(exprReturn);
+
+            addLine("\t" + "store i32 " + exprReturn + ", i32* " + arrayReg);
+            labelCounter++;
+        } else {
+            addLine("\t" + "store i32 " + exprReturn + ", i32* %_" + (registerCounter - 1));
+            labelCounter++;
+        }
         return null;
     }
 
@@ -696,17 +779,17 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         }
 
         labelCounter++;
-        System.out.println("br i1 " + ifCondtion + ", label %if_then_" + ifLabel + ", label %if_else_" + ifLabel);
+        addLine("\t" + "br i1 " + ifCondtion + ", label %if_then_" + ifLabel + ", label %if_else_" + ifLabel);
 
-        System.out.println("if_then_" + ifLabel + ":");
+        addLine("\t" + "\nif_then_" + ifLabel + ":");
         n.f4.accept(this, argu);
-        System.out.println("br label %if_end_" + ifLabel);
+        addLine("\t" + "br label %if_end_" + ifLabel);
 
-        System.out.println("if_else_" + ifLabel + ":");
+        addLine("\t" + "\nif_else_" + ifLabel + ":");
         n.f6.accept(this, argu);
-        System.out.println("br label %if_end_" + ifLabel);
+        addLine("\t" + "br label %if_end_" + ifLabel);
 
-        System.out.println("if_end_" + ifLabel + ":");
+        addLine("\t" + "\nif_end_" + ifLabel + ":");
         return null;
     }
 
@@ -723,28 +806,28 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         labelCounter++;
         method thisMethod = (method) argu;
         // Jump to the start of the loop
-        System.out.println("br label %while_top_" + WhileExpressionLabel);
-        System.out.println("while_top_" + WhileExpressionLabel + ":");
+        addLine("\t" + "br label %while_top_" + WhileExpressionLabel);
+        addLine("\t" + "\nwhile_top_" + WhileExpressionLabel + ":");
 
-        // Create condition and jump based on result
+        // Create condition expr and jump based on result
         String loopCondtion = n.f2.accept(this, argu);
         if (isVar(loopCondtion, (method) argu) != null) {
             loopCondtion = loadVarToRegister(loopCondtion, "boolean", thisMethod);
         }
-        System.out.println("br i1 " + loopCondtion + ", label %while_in_" + WhileExpressionLabel + ", label %while_out_"
+        addLine("\t" + "br i1 " + loopCondtion + ", label %while_in_" + WhileExpressionLabel + ", label %while_out_"
                 + WhileExpressionLabel);
 
         // In the loop
-        System.out.println("while_in_" + WhileExpressionLabel + ":");
+        addLine("\t" + "\nwhile_in_" + WhileExpressionLabel + ":");
         n.f4.accept(this, argu);
-        System.out.println("br label %while_top_" + WhileExpressionLabel);
+        addLine("\t" + "br label %while_top_" + WhileExpressionLabel);
 
-        System.out.println("while_out_" + WhileExpressionLabel + ":");
+        addLine("\t" + "\nwhile_out_" + WhileExpressionLabel + ":");
         return null;
     }
 
     /**
-     * f0 -> "System.out.println"
+     * f0 -> "addLine"
      * f1 -> "("
      * f2 -> Expression()
      * f3 -> ")"
@@ -757,7 +840,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         if (isVar(varName, thisMethod) != null) {
             varName = loadVarToRegister(varName, isVar(varName, thisMethod), thisMethod);
         }
-        System.out.println("call void (i32) @print_int(i32 " + varName + ")");
+        addLine("\t" + "call void (i32) @print_int(i32 " + varName + ")");
         registerCounter++;
         return null;
     }
@@ -772,37 +855,48 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(MessageSend n, Object argu) throws Exception {
-        lastAlloc = null;
+        // Get the object the method is called on
         String className = n.f0.accept(this, argu);
         String classType;
 
+        // Get the name of the method
         String methodName = n.f2.accept(this, argu);
         method thisMethod = (method) argu;
         method methodObject = null;
         String arguments = "";
         String type = "";
-        String givenArguments = n.f4.accept(this, argu);
-        if(givenArguments == null){
-            givenArguments = "";
-        }
+
+        // Get the type of the object the method is called on
         if (isVar(className, thisMethod) != null) {
+            // First case: the object is a field or variable
             classType = isVar(className, thisMethod);
             className = loadVarToRegister(className, isVar(className, thisMethod), thisMethod);
         } else {
+            // Second case: the object is a new [CLASS] expression, get the type that we
+            // stored during allocation
             classType = lastAlloc;
         }
 
-        System.out.println("%_" + registerCounter + " = bitcast i8* " + className + " to i8***");
+        // Use the argument list counter to calculate the index of each argument to
+        // obtain the type
+        argumentListType argumentCounter = new argumentListType(thisMethod,
+                getMethod(classes.get(classType), methodName));
+        String givenArguments = n.f4.accept(this, argumentCounter);
+        if (givenArguments == null) {
+            givenArguments = "";
+        }
+
+        addLine("\t" + "%_" + registerCounter + " = bitcast i8* " + className + " to i8***");
         registerCounter++;
 
-        System.out.println("%_" + registerCounter + " = load i8**, i8*** %_" + (registerCounter - 1));
+        addLine("\t" + "%_" + registerCounter + " = load i8**, i8*** %_" + (registerCounter - 1));
         registerCounter++;
 
-        System.out.println("%_" + registerCounter + " = getelementptr i8*, i8** %_" + (registerCounter - 1) + ", i32 "
+        addLine("\t" + "%_" + registerCounter + " = getelementptr i8*, i8** %_" + (registerCounter - 1) + ", i32 "
                 + getMethodOffset(classes.get(classType), methodName));
         registerCounter++;
 
-        System.out.println("%_" + registerCounter + " = load i8*, i8** %_" + (registerCounter - 1));
+        addLine("\t" + "%_" + registerCounter + " = load i8*, i8** %_" + (registerCounter - 1));
         registerCounter++;
 
         methodObject = getMethod(classes.get(classType), methodName);
@@ -831,15 +925,15 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
             }
         }
 
-        System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to " + type
+        addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to " + type
                 + " (i8*" + arguments + ")*");
         registerCounter++;
 
-        System.out.println(
+        addLine("\t" +
                 "%_" + registerCounter + " = call " + type + " %_" + (registerCounter - 1) + " (i8* " + className + " "
-                        + givenArguments + ")");
+                + givenArguments + ")");
         registerCounter++;
-
+        lastAlloc = methodObject.Type;
         return "%_" + (registerCounter - 1);
     }
 
@@ -849,10 +943,12 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(ExpressionList n, Object argu) throws Exception {
-        String typeString = n.f0.accept(this, argu);
-        method thisMethod = (method) argu;
+        argumentListType argumentCounter = (argumentListType) argu;
+        method thisMethod = argumentCounter.currMethod;
+        String typeString = n.f0.accept(this, thisMethod);
         String type = isVar(typeString, thisMethod);
         String llvmType = "";
+        // Add the first expression and its type to the accumulated string
         if (type != null) {
             if (type == "int[]") {
                 llvmType = "i32*";
@@ -871,12 +967,18 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                 typeString = "i1 1";
             } else if (typeString == "false") {
                 typeString = "i1 0";
-            } else {
+            } else if (typeString.chars().allMatch(Character::isDigit)) {
                 typeString = "i32 " + typeString;
+            } else if (classes.containsKey(typeString)) {
+                typeString = "i8* " + typeString;
+            } else {
+                typeString = getMethodArgumentType(argumentCounter.givenMethod, 0) + " " + typeString;
             }
         }
+        // Do the same for the next arguments if any, passing the counter object
+        argumentCounter.counter++;
         if (n.f1 != null) {
-            typeString += n.f1.accept(this, argu);
+            typeString += n.f1.accept(this, argumentCounter);
         }
         return "," + typeString;
     }
@@ -886,9 +988,11 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(ExpressionTail n, Object argu) throws Exception {
+        argumentListType argumentCounter = (argumentListType) argu;
         String ret = "";
         for (Node node : n.f0.nodes) {
-            ret += "," + node.accept(this, argu);
+            ret += "," + node.accept(this, argumentCounter);
+            argumentCounter.counter++;
         }
         return ret;
     }
@@ -899,10 +1003,12 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
      */
     @Override
     public String visit(ExpressionTerm n, Object argu) throws Exception {
-        String termResult = n.f1.accept(this, argu);
-        method thisMethod = (method) argu;
+        argumentListType argumentCounter = (argumentListType) argu;
+        method thisMethod = argumentCounter.currMethod;
+        String termResult = n.f1.accept(this, thisMethod);
         String type = isVar(termResult, thisMethod);
         String llvmType = "";
+        // Calculate an expression of the expression list of arguments
         if (type != null) {
             if (type == "int[]") {
                 llvmType = "i32*";
@@ -921,8 +1027,12 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                 termResult = "i1 1";
             } else if (termResult == "false") {
                 termResult = "i1 0";
-            } else {
+            } else if (termResult.chars().allMatch(Character::isDigit)) {
                 termResult = "i32 " + termResult;
+            } else if (classes.containsKey(termResult)) {
+                termResult = "i8* " + termResult;
+            } else {
+                termResult = getMethodArgumentType(argumentCounter.givenMethod, 0) + " " + termResult;
             }
         }
         return termResult;
@@ -943,29 +1053,29 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         if (isVar(clause1, (method) argu) != null) {
             clause1 = loadVarToRegister(clause1, "boolean", thisMethod);
         }
-        System.out.println("br i1 " + clause1 + ", label %exp_res_1_" + AndExpressionLabel + ", label %exp_res_0_"
+        addLine("\t" + "br i1 " + clause1 + ", label %exp_res_1_" + AndExpressionLabel + ", label %exp_res_0_"
                 + AndExpressionLabel);
 
         // exp_res_1
-        System.out.println("exp_res_0_" + AndExpressionLabel + ":");
-        System.out.println("br label %exp_res_3_" + AndExpressionLabel);
+        addLine("\t" + "exp_res_0_" + AndExpressionLabel + ":");
+        addLine("\t" + "br label %exp_res_3_" + AndExpressionLabel);
 
         // exp_res_1
-        System.out.println("exp_res_1_" + AndExpressionLabel + ":");
+        addLine("\t" + "exp_res_1_" + AndExpressionLabel + ":");
         String clause2 = n.f2.accept(this, argu);
         if (isVar(clause2, (method) argu) != null) {
             clause2 = loadVarToRegister(clause2, "boolean", thisMethod);
         }
         secondClause = clause2;
-        System.out.println("br label %exp_res_2_" + AndExpressionLabel);
+        addLine("\t" + "br label %exp_res_2_" + AndExpressionLabel);
 
         // exp_res_2
-        System.out.println("exp_res_2_" + AndExpressionLabel + ":");
-        System.out.println("br label %exp_res_3_" + AndExpressionLabel);
+        addLine("\t" + "exp_res_2_" + AndExpressionLabel + ":");
+        addLine("\t" + "br label %exp_res_3_" + AndExpressionLabel);
 
         // exp_res_3
-        System.out.println("exp_res_3_" + AndExpressionLabel + ":");
-        System.out.println("%_" + registerCounter + " = phi i1  [ 0, %exp_res_0_" + AndExpressionLabel + " ], [ "
+        addLine("\t" + "exp_res_3_" + AndExpressionLabel + ":");
+        addLine("\t" + "%_" + registerCounter + " = phi i1  [ 0, %exp_res_0_" + AndExpressionLabel + " ], [ "
                 + secondClause + ", %exp_res_2_" + AndExpressionLabel + " ]");
         registerCounter++;
         return "%_" + (registerCounter - 1);
@@ -996,7 +1106,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         } else {
             register2 = name2;
         }
-        System.out.println("%_" + registerCounter + " = icmp slt i32 " + register1 + ", " + register2);
+        addLine("\t" + "%_" + registerCounter + " = icmp slt i32 " + register1 + ", " + register2);
         registerCounter++;
         return "%_" + (registerCounter - 1);
     }
@@ -1026,7 +1136,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         } else {
             register2 = name2;
         }
-        System.out.println("%_" + registerCounter + " = add i32 " + register1 + ", " + register2);
+        addLine("\t" + "%_" + registerCounter + " = add i32 " + register1 + ", " + register2);
         registerCounter++;
         return "%_" + (registerCounter - 1);
     }
@@ -1056,7 +1166,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         } else {
             register2 = name2;
         }
-        System.out.println("%_" + registerCounter + " = sub i32 " + register1 + ", " + register2);
+        addLine("\t" + "%_" + registerCounter + " = sub i32 " + register1 + ", " + register2);
         registerCounter++;
         return "%_" + (registerCounter - 1);
     }
@@ -1086,40 +1196,42 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         } else {
             indexRegister = indexName;
         }
-        if (arrayType.equals("int[]")) {
-            
-            System.out.println("%_" + registerCounter + " = load i32, i32* " + arrayRegister);
-            registerCounter++;
-            System.out.println("%_" + registerCounter + " = icmp sge i32 " + indexRegister + ", 0");
-            registerCounter++;
-            System.out.println(
-                    "%_" + registerCounter + " = icmp slt i32 " + indexRegister + ", %_" + (registerCounter - 2));
-            registerCounter++;
-            System.out.println(
-                    "%_" + registerCounter + " = and i1 %_" + (registerCounter - 2) + ", %_" + (registerCounter - 1));
-            registerCounter++;
-            System.out.println("br i1 %_" + (registerCounter - 1) + ", label %oob_ok_" + labelCounter
-                    + ", label %oob_err_" + labelCounter);
 
-            System.out.println("oob_err_" + labelCounter + ":");
-            System.out.println("call void @throw_oob()");
-            System.out.println("br label %oob_out_" + labelCounter);
+        addLine("\t" + "%_" + registerCounter + " = load i32, i32* " + arrayRegister);
+        registerCounter++;
+        addLine("\t" + "%_" + registerCounter + " = icmp sge i32 " + indexRegister + ", 0");
+        registerCounter++;
+        addLine("\t" +
+                "%_" + registerCounter + " = icmp slt i32 " + indexRegister + ", %_" + (registerCounter - 2));
+        registerCounter++;
+        addLine("\t" +
+                "%_" + registerCounter + " = and i1 %_" + (registerCounter - 2) + ", %_" + (registerCounter - 1));
+        registerCounter++;
+        addLine("\t" + "br i1 %_" + (registerCounter - 1) + ", label %oob_ok_" + labelCounter
+                + ", label %oob_err_" + labelCounter);
 
+        addLine("\t" + "\noob_err_" + labelCounter + ":");
+        addLine("\t" + "call void @throw_oob()");
+        addLine("\t" + "br label %oob_out_" + labelCounter);
 
+        addLine("\t" + "\noob_ok_" + labelCounter + ":");
+        addLine("\t" + "%_" + registerCounter + " = add i32 1, " + indexRegister);
+        registerCounter++;
+        addLine("\t" + "%_" + registerCounter + " = getelementptr i32, i32* " + arrayRegister
+                + " , i32 %_" + (registerCounter - 1));
+        registerCounter++;
+        addLine("\t" + "%_" + registerCounter + " = load i32, i32* %_" + (registerCounter - 1));
+        addLine("\t" + "br label %oob_out_" + labelCounter);
+        addLine("\t" + "\noob_out_" + labelCounter + ":");
+        registerCounter++;
 
-            System.out.println("oob_ok_" + labelCounter + ":");
-            System.out.println("%_" + registerCounter + " = add i32 1, " + indexRegister);
+        // If the array is of booleand type, convert the i32 value stored to i1
+        if (arrayType.equals("boolean[]")) {
+            addLine("\t" + "%_" + registerCounter + " = trunc i32 %_" + (registerCounter - 1) + " to i1");
             registerCounter++;
-            System.out.println("%_" + registerCounter + " = getelementptr i32, i32* " + arrayRegister
-                    + " , i32 %_" + (registerCounter - 1));
-            registerCounter++;
-            System.out.println("%_" + registerCounter + " = load i32, i32* %_" + (registerCounter - 1));
-            System.out.println("br label %oob_out_" + labelCounter);
-            System.out.println("oob_out_" + labelCounter + ":");
-
-            registerCounter++;
-            labelCounter++;
         }
+        labelCounter++;
+
         return "%_" + (registerCounter - 1);
     }
 
@@ -1148,7 +1260,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         } else {
             register2 = name2;
         }
-        System.out.println("%_" + registerCounter + " = mul i32 " + register1 + ", " + register2);
+        addLine("\t" + "%_" + registerCounter + " = mul i32 " + register1 + ", " + register2);
         registerCounter++;
         return "%_" + (registerCounter - 1);
     }
@@ -1171,7 +1283,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
             arrayRegister = arrayName;
         }
         if (arrayType.equals("int[]")) {
-            System.out.println("%_" + registerCounter + " = load i32, i32* " + arrayRegister);
+            addLine("\t" + "%_" + registerCounter + " = load i32, i32* " + arrayRegister);
             registerCounter++;
             labelCounter++;
         }
@@ -1208,30 +1320,32 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
     @Override
     public String visit(BooleanArrayAllocationExpression n, Object argu) throws Exception {
         String arraySize = n.f3.accept(this, argu);
-        System.out.println("%_" + registerCounter + " = add i32 1, " + arraySize);
+        method thisMethod = (method) argu;
+        if (isVar(arraySize, thisMethod) != null) {
+            arraySize = loadVarToRegister(arraySize, "int", thisMethod);
+        }
+        addLine("\t" + "%_" + registerCounter + " = add i32 1, " + arraySize);
         registerCounter++;
 
-        System.out.println("%_" + registerCounter + " = icmp sge i32 %_" + (registerCounter - 1) + ", 1");
+        addLine("\t" + "%_" + registerCounter + " = icmp sge i32 %_" + (registerCounter - 1) + ", 1");
         registerCounter++;
 
-        System.out.println("br i1 %_" + (registerCounter - 1) + ", label %nsz_ok_" + labelCounter
+        addLine("\t" + "br i1 %_" + (registerCounter - 1) + ", label %nsz_ok_" + labelCounter
                 + ", label %nsz_err_" + labelCounter);
 
-        System.out.println("nsz_err_" + labelCounter + ":");
-        System.out.println("call void @throw_nsz()");
-        System.out.println("br label %nsz_ok_" + labelCounter);
-
-        System.out.println("nsz_ok_" + labelCounter + ":");
-
-        System.out.println("%_" + registerCounter + " = call i8* @calloc(i32 %_" + (registerCounter - 2) + ", i32 1)");
+        addLine("\t" + "\nnsz_err_" + labelCounter + ":");
+        addLine("\t" + "call void @throw_nsz()");
+        addLine("\t" + "br label %nsz_ok_" + labelCounter);
+        addLine("\t" + "\nnsz_ok_" + labelCounter + ":");
+        addLine("\t" + "%_" + registerCounter + " = call i8* @calloc(i32 %_" + (registerCounter - 2) + ", i32 4)");
         registerCounter++;
 
-        System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
+        addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
         registerCounter++;
 
-        System.out.println("store i32 " + arraySize + ", i32* %_" + (registerCounter - 1));
-
-        return "boolean[]";
+        addLine("\t" + "store i32 " + arraySize + ", i32* %_" + (registerCounter - 1));
+        labelCounter++;
+        return "%_" + (registerCounter - 1);
     }
 
     /**
@@ -1248,28 +1362,28 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         if (isVar(arraySize, thisMethod) != null) {
             arraySize = loadVarToRegister(arraySize, "int", thisMethod);
         }
-        System.out.println("%_" + registerCounter + " = add i32 1, " + arraySize);
+        addLine("\t" + "%_" + registerCounter + " = add i32 1, " + arraySize);
         registerCounter++;
 
-        System.out.println("%_" + registerCounter + " = icmp sge i32 %_" + (registerCounter - 1) + ", 1");
+        addLine("\t" + "%_" + registerCounter + " = icmp sge i32 %_" + (registerCounter - 1) + ", 1");
         registerCounter++;
 
-        System.out.println("br i1 %_" + (registerCounter - 1) + ", label %nsz_ok_" + labelCounter
+        addLine("\t" + "br i1 %_" + (registerCounter - 1) + ", label %nsz_ok_" + labelCounter
                 + ", label %nsz_err_" + labelCounter);
 
-        System.out.println("nsz_err_" + labelCounter + ":");
-        System.out.println("call void @throw_nsz()");
-        System.out.println("br label %nsz_ok_" + labelCounter);
-        System.out.println("nsz_ok_" + labelCounter + ":");
-        System.out.println("%_" + registerCounter + " = call i8* @calloc(i32 %_" + (registerCounter - 2) + ", i32 4)");
+        addLine("\t" + "\nnsz_err_" + labelCounter + ":");
+        addLine("\t" + "call void @throw_nsz()");
+        addLine("\t" + "br label %nsz_ok_" + labelCounter);
+        addLine("\t" + "\nnsz_ok_" + labelCounter + ":");
+        addLine("\t" + "%_" + registerCounter + " = call i8* @calloc(i32 %_" + (registerCounter - 2) + ", i32 4)");
         registerCounter++;
 
-        System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
+        addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
         registerCounter++;
 
-        System.out.println("store i32 " + arraySize + ", i32* %_" + (registerCounter - 1));
+        addLine("\t" + "store i32 " + arraySize + ", i32* %_" + (registerCounter - 1));
         labelCounter++;
-        return "%_"+(registerCounter -1);
+        return "%_" + (registerCounter - 1);
     }
 
     /**
@@ -1286,6 +1400,9 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         lastAlloc = type;
         int fieldOffset = 0;
         parentClass = classes.get(type).parentClass;
+
+        //Calculate the ammount of memory to allocate to the new object
+        // Get the offset of the last field of the object, add its size + 8 for the V-Table
         if (classes.get(type).fieldOffset.length == 0) {
             while (parentClass != null) {
                 if (parentClass.fieldOffset.length != 0) {
@@ -1313,18 +1430,18 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                 fieldOffset += 8;
             }
         }
-        System.out.println("%_" + registerCounter + " = call i8* @calloc(i32 1, i32 " + (fieldOffset + 8) + ")");
+        addLine("\t" + "%_" + registerCounter + " = call i8* @calloc(i32 1, i32 " + (fieldOffset + 8) + ")");
         registerCounter++;
 
-        System.out.println("%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8***");
+        addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8***");
         registerCounter++;
 
-        System.out.println(
+        addLine("\t" +
                 "%_" + registerCounter + " = getelementptr [" + getVtableSize(classes.get(type)) + " x i8*], ["
-                        + getVtableSize(classes.get(type)) + " x i8*]* @." + type + "_vtable, i32 0, i32 0");
+                + getVtableSize(classes.get(type)) + " x i8*]* @." + type + "_vtable, i32 0, i32 0");
         registerCounter++;
 
-        System.out.println("store i8** %_" + (registerCounter - 1) + ", i8*** %_" + (registerCounter - 2));
+        addLine("\t" + "store i8** %_" + (registerCounter - 1) + ", i8*** %_" + (registerCounter - 2));
 
         return "%_" + (registerCounter - 3);
     }
@@ -1351,7 +1468,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         if (isVar(clause, (method) argu) != null) {
             clause = loadVarToRegister(clause, "boolean", thisMethod);
         }
-        System.out.println("%_" + registerCounter + " = xor i1 1, " + clause);
+        addLine("\t" + "%_" + registerCounter + " = xor i1 1, " + clause);
         registerCounter++;
         return "%_" + (registerCounter - 1);
     }

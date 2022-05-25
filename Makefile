@@ -6,6 +6,7 @@ compile:
 	javac ./src/variable.java
 	javac ./src/method.java
 	javac ./src/classMap.java
+	javac ./src/argumentListType.java
 	javac ./src/VisitorPhase1.java
 	javac ./src/VisitorPhase2.java
 	javac ./src/VisitorPhase3.java
