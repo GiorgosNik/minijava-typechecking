@@ -25,7 +25,7 @@ public class Main {
             FileInputStream fis = null;
             try {
                 fis = new FileInputStream(args[i]);
-                outFile = args[i].split(".java");
+                outFile = args[i].split("\\.java");
                 System.out.println("Program: "+args[i]);
                 MiniJavaParser parser = new MiniJavaParser(fis);
 
@@ -41,11 +41,11 @@ public class Main {
                 VisitorPhase2 checker = new VisitorPhase2();
                 checker.passSymbolTable(eval.classes);
                 root.accept(checker, null);
-
                 VisitorPhase3 llvmComp = new VisitorPhase3();
                 llvmComp.passSymbolTable(eval.classes);
                 root.accept(llvmComp, null);
                 try {
+                    System.out.println(outFile[0]+".ll");
                     FileWriter myWriter = new FileWriter(outFile[0]+".ll");
                     myWriter.write(llvmComp.codeCollection);
                     myWriter.close();

@@ -246,34 +246,44 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                 }
             }
             if (fieldType == "int") {
-                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine(
+                        "\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
+                addLine(
+                        "\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
                 registerCounter++;
                 addLine("\t" + "%_" + registerCounter + " = load i32, i32* %_" + (registerCounter - 1));
 
             } else if (fieldType == "int[]") {
-                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine(
+                        "\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
+                addLine(
+                        "\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
                 registerCounter++;
                 addLine("\t" + "%_" + registerCounter + " = load i32*, i32** %_" + (registerCounter - 1));
             } else if (fieldType == "boolean[]") {
-                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine(
+                        "\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
+                addLine(
+                        "\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
                 registerCounter++;
                 addLine("\t" + "%_" + registerCounter + " = load i32*, i32** %_" + (registerCounter - 1));
             } else if (fieldType == "boolean") {
-                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine(
+                        "\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
+                addLine(
+                        "\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
                 registerCounter++;
                 addLine("\t" + "%_" + registerCounter + " = load i1, i1* %_" + (registerCounter - 1));
             } else if (classes.containsKey(fieldType)) {
-                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine(
+                        "\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
+                addLine(
+                        "\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
                 registerCounter++;
                 addLine("\t" + "%_" + registerCounter + " = load i8*, i8** %_" + (registerCounter - 1));
             }
@@ -319,24 +329,32 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                 }
             }
             if (fieldType == "int") {
-                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine(
+                        "\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
+                addLine(
+                        "\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
                 addLine("\t" + "store i32 " + expr + ", i32* %_" + registerCounter);
             } else if (fieldType == "int[]") {
-                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine(
+                        "\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
+                addLine(
+                        "\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32**");
                 addLine("\t" + "store i32* " + expr + ", i32** %_" + registerCounter);
             } else if (fieldType == "boolean") {
-                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine(
+                        "\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
+                addLine(
+                        "\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i1*");
                 addLine("\t" + "store i1 " + expr + ", i1* %_" + registerCounter);
             } else if (classes.containsKey(fieldType)) {
-                addLine("\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
+                addLine(
+                        "\t" + "%_" + registerCounter + " =  getelementptr i8, i8* %this, i32 " + (offset + 8));
                 registerCounter++;
-                addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
+                addLine(
+                        "\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i8**");
                 addLine("\t" + "store i8* " + expr + ", i8** %_" + registerCounter);
             }
         }
@@ -437,7 +455,6 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                         parentClass = null;
                     }
                 }
-
                 // Loop for parent classes
                 for (int i = 0; i < parentList.size(); i++) {
 
@@ -450,7 +467,6 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                         }
                     }
                 }
-
                 for (String methodKey : classes.get(key).methods.keySet()) {
                     if (uniqueMethods.containsKey(methodKey)) {
                         uniqueMethods.replace(methodKey, classes.get(key).methods.get(methodKey));
@@ -459,32 +475,43 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
                     }
                 }
                 for (String methodKey : uniqueMethods.keySet()) {
-                    methodSubString = "i8* bitcast (";
-                    if (uniqueMethods.get(methodKey).Type == "int") {
-                        methodSubString = methodSubString + "i32";
-                    } else if (uniqueMethods.get(methodKey).Type == "boolean") {
-                        methodSubString = methodSubString + "i1";
-                    } else {
-                        methodSubString = methodSubString + "i8*";
-                    }
-                    methodSubString = methodSubString + "(i8*";
-                    for (String argumentKey : uniqueMethods.get(methodKey).formalParams.keySet()) {
-                        if (uniqueMethods.get(methodKey).formalParams.get(argumentKey).Type == "int") {
-                            methodSubString = methodSubString + ",i32";
-                        } else if (uniqueMethods.get(methodKey).formalParams.get(argumentKey).Type == "boolean") {
-                            methodSubString = methodSubString + ",i1";
+                    if (!(methodKey.equals("main") && classes.get(key).parentClass != null
+                            && classes.get(key).parentClass.methods.containsKey("main"))) {
+                        methodSubString = "i8* bitcast (";
+                        if (uniqueMethods.get(methodKey).Type == "int") {
+                            methodSubString = methodSubString + "i32";
+                        } else if (uniqueMethods.get(methodKey).Type == "boolean") {
+                            methodSubString = methodSubString + "i1";
                         } else {
-                            methodSubString = methodSubString + ",i8*";
+                            methodSubString = methodSubString + "i8*";
+                        }
+                        methodSubString = methodSubString + "(i8*";
+                        for (String argumentKey : uniqueMethods.get(methodKey).formalParams.keySet()) {
+                            if (uniqueMethods.get(methodKey).formalParams.get(argumentKey).Type == "int") {
+                                methodSubString = methodSubString + ",i32";
+                            } else if (uniqueMethods.get(methodKey).formalParams.get(argumentKey).Type == "boolean") {
+                                methodSubString = methodSubString + ",i1";
+                            } else {
+                                methodSubString = methodSubString + ",i8*";
+                            }
+                        }
+                        methodSubString = methodSubString + ")* @" + uniqueMethods.get(methodKey).belongsTo.Name + "."
+                                + methodKey + " to i8*)";
+                        if (methodString != "") {
+                            methodString = methodString + ", \n" + methodSubString;
+                        } else {
+                            methodString = methodSubString;
+                        }
+                    } else {
+                        methodSubString = "i8* bitcast (i32()* @main to i8*)";
+                        if (methodString != "") {
+                            methodString = methodString + ", \n" + methodSubString;
+                        } else {
+                            methodString = methodSubString;
                         }
                     }
-                    methodSubString = methodSubString + ")* @" + uniqueMethods.get(methodKey).belongsTo.Name + "."
-                            + methodKey + " to i8*)";
-                    if (methodString != "") {
-                        methodString = methodString + ", \n" + methodSubString;
-                    } else {
-                        methodString = methodSubString;
-                    }
                 }
+
                 addLine("@." + key + "_vtable = global ["
                         + String.valueOf(uniqueMethods.size()) + " x i8*][" + methodString + "]");
 
@@ -508,6 +535,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         // Created all V-tables, now start working on the main function
         n.f14.accept(this, thisClass.methods.get("main"));
         n.f15.accept(this, thisClass.methods.get("main"));
+
         addLine("\t" + "ret i32 0");
         addLine("}\n");
         return null;
@@ -728,13 +756,15 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         registerCounter++;
         addLine("\t" + "%_" + registerCounter + " = icmp sge i32 " + arrayIndex + ", 0");
         registerCounter++;
-        addLine("\t" + "%_" + registerCounter + " = icmp slt i32 " + arrayIndex + ", %_" + (registerCounter - 2));
+        addLine(
+                "\t" + "%_" + registerCounter + " = icmp slt i32 " + arrayIndex + ", %_" + (registerCounter - 2));
         registerCounter++;
         addLine("\t" +
                 "%_" + registerCounter + " = and i1 %_" + (registerCounter - 2) + ", %_" + (registerCounter - 1));
         registerCounter++;
-        addLine("\t" + "br i1 %_" + (registerCounter - 1) + ", label %oob_ok_" + labelCounter + ", label %oob_err_"
-                + labelCounter);
+        addLine(
+                "\t" + "br i1 %_" + (registerCounter - 1) + ", label %oob_ok_" + labelCounter + ", label %oob_err_"
+                        + labelCounter);
         addLine("\t" + "\noob_err_" + labelCounter + ":");
         addLine("\t" + "call void @throw_oob()");
         addLine("\t" + "br label %oob_ok_" + labelCounter);
@@ -754,6 +784,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
             addLine("\t" + "store i32 " + exprReturn + ", i32* " + arrayReg);
             labelCounter++;
         } else {
+            registerCounter++;
             addLine("\t" + "store i32 " + exprReturn + ", i32* %_" + (registerCounter - 1));
             labelCounter++;
         }
@@ -814,8 +845,9 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         if (isVar(loopCondtion, (method) argu) != null) {
             loopCondtion = loadVarToRegister(loopCondtion, "boolean", thisMethod);
         }
-        addLine("\t" + "br i1 " + loopCondtion + ", label %while_in_" + WhileExpressionLabel + ", label %while_out_"
-                + WhileExpressionLabel);
+        addLine(
+                "\t" + "br i1 " + loopCondtion + ", label %while_in_" + WhileExpressionLabel + ", label %while_out_"
+                        + WhileExpressionLabel);
 
         // In the loop
         addLine("\t" + "\nwhile_in_" + WhileExpressionLabel + ":");
@@ -892,8 +924,9 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         addLine("\t" + "%_" + registerCounter + " = load i8**, i8*** %_" + (registerCounter - 1));
         registerCounter++;
 
-        addLine("\t" + "%_" + registerCounter + " = getelementptr i8*, i8** %_" + (registerCounter - 1) + ", i32 "
-                + getMethodOffset(classes.get(classType), methodName));
+        addLine(
+                "\t" + "%_" + registerCounter + " = getelementptr i8*, i8** %_" + (registerCounter - 1) + ", i32 "
+                        + getMethodOffset(classes.get(classType), methodName));
         registerCounter++;
 
         addLine("\t" + "%_" + registerCounter + " = load i8*, i8** %_" + (registerCounter - 1));
@@ -1054,7 +1087,7 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
             clause1 = loadVarToRegister(clause1, "boolean", thisMethod);
         }
         addLine("\t" + "br i1 " + clause1 + ", label %exp_res_1_" + AndExpressionLabel + ", label %exp_res_0_"
-                + AndExpressionLabel);
+                        + AndExpressionLabel);
 
         // exp_res_1
         addLine("\t" + "exp_res_0_" + AndExpressionLabel + ":");
@@ -1337,7 +1370,8 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         addLine("\t" + "call void @throw_nsz()");
         addLine("\t" + "br label %nsz_ok_" + labelCounter);
         addLine("\t" + "\nnsz_ok_" + labelCounter + ":");
-        addLine("\t" + "%_" + registerCounter + " = call i8* @calloc(i32 %_" + (registerCounter - 2) + ", i32 4)");
+        addLine(
+                "\t" + "%_" + registerCounter + " = call i8* @calloc(i32 %_" + (registerCounter - 2) + ", i32 4)");
         registerCounter++;
 
         addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
@@ -1375,7 +1409,8 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         addLine("\t" + "call void @throw_nsz()");
         addLine("\t" + "br label %nsz_ok_" + labelCounter);
         addLine("\t" + "\nnsz_ok_" + labelCounter + ":");
-        addLine("\t" + "%_" + registerCounter + " = call i8* @calloc(i32 %_" + (registerCounter - 2) + ", i32 4)");
+        addLine(
+                "\t" + "%_" + registerCounter + " = call i8* @calloc(i32 %_" + (registerCounter - 2) + ", i32 4)");
         registerCounter++;
 
         addLine("\t" + "%_" + registerCounter + " = bitcast i8* %_" + (registerCounter - 1) + " to i32*");
@@ -1401,23 +1436,27 @@ public class VisitorPhase3 extends GJDepthFirst<String, Object> {
         int fieldOffset = 0;
         parentClass = classes.get(type).parentClass;
 
-        //Calculate the ammount of memory to allocate to the new object
-        // Get the offset of the last field of the object, add its size + 8 for the V-Table
+        // Calculate the ammount of memory to allocate to the new object
+        // Get the offset of the last field of the object, add its size + 8 for the
+        // V-Table
         if (classes.get(type).fieldOffset.length == 0) {
             while (parentClass != null) {
-                if (parentClass.fieldOffset.length != 0) {
-                    fieldOffset = parentClass.fieldOffset[parentClass.fieldOffset.length - 1];
-                    variableList = new ArrayList<variable>(parentClass.fields.values());
-                    if (variableList.get(parentClass.fieldOffset.length - 1).Type == "int") {
-                        fieldOffset += 4;
-                    } else if (variableList.get(parentClass.fieldOffset.length - 1).Type == "boolean") {
-                        fieldOffset += 1;
-                    } else {
-                        fieldOffset += 8;
+
+                if (!parentClass.methods.containsKey("main")) {
+                    if (parentClass.fieldOffset.length != 0) {
+                        fieldOffset = parentClass.fieldOffset[parentClass.fieldOffset.length - 1];
+                        variableList = new ArrayList<variable>(parentClass.fields.values());
+                        if (variableList.get(parentClass.fieldOffset.length - 1).Type == "int") {
+                            fieldOffset += 4;
+                        } else if (variableList.get(parentClass.fieldOffset.length - 1).Type == "boolean") {
+                            fieldOffset += 1;
+                        } else {
+                            fieldOffset += 8;
+                        }
+                        break;
                     }
-                    break;
                 }
-                parentClass = classes.get(type).parentClass;
+                parentClass = parentClass.parentClass;
             }
         } else {
             fieldOffset = classes.get(type).fieldOffset[classes.get(type).fieldOffset.length - 1];
